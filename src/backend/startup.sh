@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+echo "Patching DATABASE_URL for asyncpg..."
+# Render provides postgresql://, we need postgresql+asyncpg://
+export DATABASE_URL="${DATABASE_URL/postgresql:\/\//postgresql+asyncpg://}"
+
 echo "Running database migrations..."
 alembic upgrade head
 

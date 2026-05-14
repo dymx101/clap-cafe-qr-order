@@ -23,10 +23,10 @@ export const kdsApi = {
   /** SSE 流地址 */
   getStreamUrl(): string {
     const baseURL = import.meta.env.VITE_API_BASE_URL || ''
-    const apiBase = baseURL || '/v1'
-    // Ensure proper URL format: if baseURL is empty, use relative /v1 path
+    const apiBase = baseURL || '/api'
+    // Ensure proper URL format: if baseURL is empty, use relative /api path
     if (!baseURL) {
-      return '/v1/kds/orders/stream'
+      return '/api/kds/orders/stream'
     }
     const normalizedBase = apiBase.replace(/\/+$/, '')
     return `${normalizedBase}/kds/orders/stream`

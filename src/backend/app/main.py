@@ -1,7 +1,7 @@
 # backend/app/main.py
 from contextlib import asynccontextmanager
 
-from app.api.v1 import health, kds, menu, order, payment, seat, webhook
+from app.api.v1 import health, kds, menu, order, payment, seat, webhook, seed
 from app.config import settings
 from app.utils.timeout import start_timeout_worker, stop_timeout_worker
 from fastapi import FastAPI
@@ -44,3 +44,4 @@ app.include_router(payment.router, prefix="/v1", tags=["Payments"])
 app.include_router(seat.router, prefix="/v1", tags=["Seats"])
 app.include_router(webhook.router, prefix="/v1", tags=["Webhooks"])
 app.include_router(kds.router, prefix="/v1", tags=["KDS"])
+app.include_router(seed.router, prefix="/v1", tags=["Admin"])

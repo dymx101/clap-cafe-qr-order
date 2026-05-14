@@ -10,7 +10,7 @@
 
 # ── Stage 1: Builder ──────────────────────────────────────────
 # Use a specific known-good digest. Verify at https://hub.docker.com/layers/library/python
-FROM python:3.11-slim@sha256:6e4a843db37e3c5d2e39cc4d0e1c4f460484f2a3c9f3ed3b1f5b3c7e9d6e9f0 AS builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /pylibs
 
@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir --platform manylinux2014_x86_64 \
 
 
 # ── Stage 2: Runtime ──────────────────────────────────────────
-FROM python:3.11-slim@sha256:6e4a843db37e3c5d2e39cc4d0e1c4f460484f2a3c9f3ed3b1f5b3c7e9d6e9f0
+FROM python:3.11-slim
 
 # Security: non-root user
 RUN groupadd --gid 1000 appgroup \

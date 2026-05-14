@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install deps in one layer, then remove cache
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt greenlet
+RUN pip install --no-cache-dir -r requirements.txt greenlet psycopg2-binary
 
 # Copy app
 COPY ./app ./app

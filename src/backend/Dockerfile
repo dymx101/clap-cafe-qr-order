@@ -1,57 +1,20 @@
-# backend/Dockerfile
-# ============================================================
-# Multi-stage build for Clap Cafe Ordering API
-# ============================================================
-# SECURITY: All base images use digest pinning, no裸 tags.
-# To get the current digest for python:3.11-slim:
-#   docker pull python:3.11-slim@sha256:$(docker inspect --format='{{index .RepoDigests 0}}' python:3.11-slim | cut -d'@' -f2)
-# Or: docker pull python:3.11-slim && docker inspect --format='{{index .RepoDigests 0}}' python:3.11-slim
-# ============================================================
-
-# ── Stage 1: Builder ──────────────────────────────────────────
-# Use a specific known-good digest. Verify at https://hub.docker.com/layers/library/python
-FROM python:3.11-slim AS builder
-
-WORKDIR /pylibs
-
-# Install build tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python deps into /pylibs (no system site-packages contamination)
-COPY requirements.txt .
-RUN pip install --no-cache-dir --target=/pylibs -r requirements.txt
-
-
-# ── Stage 2: Runtime ──────────────────────────────────────────
+# backend/Dockerfile — single-stage, lean for Render free tier
 FROM python:3.11-slim
-
-# Security: non-root user
-RUN groupadd --gid 1000 appgroup \
-    && useradd --uid 1000 --gid appgroup --shell /bin/bash --create-home appuser
 
 WORKDIR /app
 
-# Copy installed libs from builder
-COPY --from=builder /pylibs /usr/local/lib/python3.11/site-packages
+# Install deps in one layer, then remove cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY ./app /app/app
-COPY alembic /app/alembic
-COPY alembic.ini /app/alembic.ini
+# Copy app
+COPY ./app ./app
+COPY alembic ./alembic
+COPY alembic.ini .
 
-# Set Python path
 ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-
-# Switch to non-root
-USER appuser
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
 EXPOSE 8000
 

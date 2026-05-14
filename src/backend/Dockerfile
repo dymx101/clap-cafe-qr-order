@@ -21,10 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python deps into /pylibs (no system site-packages contamination)
 COPY requirements.txt .
-RUN pip install --no-cache-dir --platform manylinux2014_x86_64 \
-    --target=/pylibs \
-    --implementation cp \
-    -r requirements.txt
+RUN pip install --no-cache-dir --target=/pylibs -r requirements.txt
 
 
 # ── Stage 2: Runtime ──────────────────────────────────────────

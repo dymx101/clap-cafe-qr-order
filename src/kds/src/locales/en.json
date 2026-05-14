@@ -1,0 +1,58 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "kds": {
+    "title": "Kitchen Display System",
+    "connection": {
+      "connected": "Connected",
+      "reconnecting": "Reconnecting...",
+      "error": "Connection Error",
+      "closed": "Disconnected"
+    },
+    "filter": {
+      "all": "All",
+      "submitted": "Pending",
+      "confirmed": "Accepted",
+      "preparing": "Preparing",
+      "ready": "Ready"
+    },
+    "order": {
+      "table": "Table",
+      "orderId": "Order",
+      "time": "Time",
+      "items": "Items",
+      "notes": "Notes",
+      "customerNotes": "Customer Notes"
+    },
+    "action": {
+      "accept": "Accept",
+      "start": "Start",
+      "complete": "Complete",
+      "reject": "Reject"
+    },
+    "reject": {
+      "title": "Rejection Reason",
+      "soldOut": "Sold Out",
+      "busy": "Too Busy",
+      "other": "Other",
+      "confirm": "Confirm Reject"
+    },
+    "sound": {
+      "on": "Sound On",
+      "off": "Sound Off",
+      "newOrder": "New Order Alert"
+    },
+    "stats": {
+      "title": "Completed Today",
+      "orders": "orders"
+    },
+    "warning": {
+      "longWait": "Long Wait"
+    }
+  }
+}

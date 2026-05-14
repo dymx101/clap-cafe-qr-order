@@ -1,0 +1,28 @@
+# Railway.toml — Clap Cafe Ordering API
+# https://docs.railway.app/reference/config
+
+[build]
+# Railway auto-detects Dockerfile if not specified
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Health check endpoint
+healthCheckPath = "/health"
+
+# Restart policy
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Start command (overrides Dockerfile CMD)
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+[settings]
+# Railway ephemeral disk for /tmp only — no persistent local storage
+# Use Railway Postgres + Upstash Redis for persistence
+
+# Scaling
+minReplicas = 1
+maxReplicas = 3
+
+# Timeout
+maxTimeout = 30

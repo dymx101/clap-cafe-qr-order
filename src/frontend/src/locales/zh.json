@@ -1,0 +1,76 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "出错了",
+    "retry": "重试",
+    "confirm": "确认",
+    "cancel": "取消",
+    "back": "返回",
+    "close": "关闭"
+  },
+  "menu": {
+    "title": "菜单",
+    "categories": {
+      "coffee": "咖啡",
+      "tea": "茶饮",
+      "milk_tea": "奶茶",
+      "sparkling": "气泡水",
+      "dessert": "甜点",
+      "food": "轻食",
+      "combo": "套餐"
+    },
+    "add_to_cart": "加入购物车",
+    "sold_out": "售罄",
+    "options": {
+      "size": "规格",
+      "sweetness": "甜度",
+      "temperature": "温度",
+      "extras": "加料"
+    }
+  },
+  "cart": {
+    "title": "购物车",
+    "empty": "购物车是空的",
+    "subtotal": "小计",
+    "tax": "税 (GST 9%)",
+    "total": "总计",
+    "checkout": "去结账",
+    "remove": "移除",
+    "clear": "清空购物车"
+  },
+  "order": {
+    "seat": "座位",
+    "notes": "备注",
+    "notes_placeholder": "过敏原、少辣等要求",
+    "submit": "提交订单",
+    "submitted": "已提交",
+    "confirmed": "已确认",
+    "preparing": "制作中",
+    "ready": "待取餐",
+    "completed": "已完成",
+    "cancelled": "已取消",
+    "rejected": "已拒单",
+    "your_order": "您的订单",
+    "order_number": "订单号",
+    "place_order": "确认下单",
+    "cancel_order": "取消订单",
+    "cancel_reason": "取消原因"
+  },
+  "payment": {
+    "title": "选择支付方式",
+    "waiting": "等待支付...",
+    "success": "支付成功",
+    "failed": "支付失败，请重试",
+    "timeout": "支付超时，请重新下单",
+    "paynow": "PayNow",
+    "card": "信用卡",
+    "grabpay": "GrabPay",
+    "qr_code": "扫码支付",
+    "scan_qr": "请使用 PayNow App 扫码支付",
+    "expires_in": "有效期"
+  },
+  "status": {
+    "title": "订单状态",
+    "no_orders": "暂无历史订单"
+  }
+}

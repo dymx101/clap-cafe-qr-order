@@ -1,0 +1,76 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "back": "Back",
+    "close": "Close"
+  },
+  "menu": {
+    "title": "Menu",
+    "categories": {
+      "coffee": "Coffee",
+      "tea": "Tea",
+      "milk_tea": "Milk Tea",
+      "sparkling": "Sparkling",
+      "dessert": "Dessert",
+      "food": "Light Food",
+      "combo": "Combo"
+    },
+    "add_to_cart": "Add to Cart",
+    "sold_out": "Sold Out",
+    "options": {
+      "size": "Size",
+      "sweetness": "Sweetness",
+      "temperature": "Temperature",
+      "extras": "Extras"
+    }
+  },
+  "cart": {
+    "title": "Cart",
+    "empty": "Your cart is empty",
+    "subtotal": "Subtotal",
+    "tax": "Tax (GST 9%)",
+    "total": "Total",
+    "checkout": "Checkout",
+    "remove": "Remove",
+    "clear": "Clear Cart"
+  },
+  "order": {
+    "seat": "Seat",
+    "notes": "Notes",
+    "notes_placeholder": "Allergies, spice level, etc.",
+    "submit": "Submit Order",
+    "submitted": "Submitted",
+    "confirmed": "Confirmed",
+    "preparing": "Preparing",
+    "ready": "Ready",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "rejected": "Rejected",
+    "your_order": "Your Order",
+    "order_number": "Order #",
+    "place_order": "Place Order",
+    "cancel_order": "Cancel Order",
+    "cancel_reason": "Reason"
+  },
+  "payment": {
+    "title": "Payment",
+    "waiting": "Waiting for payment...",
+    "success": "Payment Successful",
+    "failed": "Payment failed, please try again",
+    "timeout": "Payment timeout, please reorder",
+    "paynow": "PayNow",
+    "card": "Credit Card",
+    "grabpay": "GrabPay",
+    "qr_code": "QR Payment",
+    "scan_qr": "Scan with PayNow App",
+    "expires_in": "Expires in"
+  },
+  "status": {
+    "title": "Order Status",
+    "no_orders": "No order history"
+  }
+}

@@ -1,17 +1,18 @@
-import uuid
+#!/usr/bin/env python3
+"""Seed the database with initial menu and seat data."""
+import asyncio
+import sys
+from pathlib import Path
 
-from app.database import AsyncSessionLocal
-from fastapi import APIRouter, Depends, HTTPException
+sys.path.insert(0, str(Path(__file__).parent))
+
+from app.database import AsyncSessionLocal, engine
 from sqlalchemy import text
 
-router = APIRouter(prefix="/admin", tags=["Admin"])
 
-
-@router.post("/seed")
-async def seed_database():
-    """Seed categories, menu items, and seats. Call once after first deploy."""
+async def seed():
     async with AsyncSessionLocal() as db:
-        # Categories — use proper UUIDs so DB doesn't reject them
+        # ── Categories ──────────────────────────────────────────────
         cats = [
             ("breakfast", "早餐", "Breakfast", 1),
             ("mains", "主食", "Mains", 2),
@@ -19,37 +20,34 @@ async def seed_database():
             ("snacks", "小食", "Snacks", 4),
             ("desserts", "甜点", "Desserts", 5),
         ]
-        cat_uuids = {}
-        for cat_key, name_zh, name_en, sort in cats:
-            cat_uuid = uuid.uuid4()
-            await db.execute(
+        cat_ids = {}
+        for cat_id, name_zh, name_en, sort in cats:
+            r = await db.execute(
                 text(
                     """
                     INSERT INTO categories (id, name_zh, name_en, sort_order, is_active)
                     VALUES (:id, :name_zh, :name_en, :sort_order, true)
-                    ON CONFLICT (id) DO NOTHING
+                    ON CONFLICT DO NOTHING
+                    RETURNING id
                 """
                 ),
                 {
-                    "id": str(cat_uuid),
+                    "id": cat_id,
                     "name_zh": name_zh,
                     "name_en": name_en,
                     "sort_order": sort,
                 },
             )
-            # Try to get existing UUID if already seeded
-            row = await db.execute(
-                text("SELECT id FROM categories WHERE name_en = :name_en"),
-                {"name_en": name_en},
-            )
-            existing = row.fetchone()
-            cat_uuids[cat_key] = str(existing[0]) if existing else str(cat_uuid)
+            row = r.fetchone()
+            cat_ids[cat_id] = row[0] if row else cat_id
+        print(f"Categories done: {cat_ids}")
         await db.commit()
 
-        # Menu items
+        # ── Menu Items ─────────────────────────────────────────────
         items = [
+            # Breakfast
             (
-                "breakfast",
+                cat_ids["breakfast"],
                 "招牌早餐套餐",
                 "Signature Breakfast Set",
                 "烤面包+煎蛋+咖啡",
@@ -57,7 +55,7 @@ async def seed_database():
                 8.80,
             ),
             (
-                "breakfast",
+                cat_ids["breakfast"],
                 "牛油果吐司",
                 "Avocado Toast",
                 "全麦吐司配牛油果泥",
@@ -65,7 +63,7 @@ async def seed_database():
                 7.50,
             ),
             (
-                "breakfast",
+                cat_ids["breakfast"],
                 "美式早餐",
                 "American Breakfast",
                 "培根+煎蛋+烤面包+咖啡",
@@ -73,7 +71,7 @@ async def seed_database():
                 9.80,
             ),
             (
-                "breakfast",
+                cat_ids["breakfast"],
                 "华夫饼套餐",
                 "Waffle Set",
                 "香草华夫饼+奶油+蜂蜜",
@@ -81,15 +79,16 @@ async def seed_database():
                 6.80,
             ),
             (
-                "breakfast",
+                cat_ids["breakfast"],
                 "鲜榨果汁",
                 "Fresh Juice",
-                "橙/苹果/胡萝卜",
-                "Orange/Apple/Carrot",
+                "橙 / 苹果 / 胡萝卜",
+                "Orange / Apple / Carrot",
                 5.50,
             ),
+            # Mains
             (
-                "mains",
+                cat_ids["mains"],
                 "新加坡叻沙",
                 "Singapore Laksa",
                 "椰浆汤底配米粉、大虾、鱼丸",
@@ -97,7 +96,7 @@ async def seed_database():
                 13.80,
             ),
             (
-                "mains",
+                cat_ids["mains"],
                 "椰浆饭",
                 "Nasi Lemak",
                 "香米+椰浆+花生+参巴酱+煎蛋",
@@ -105,7 +104,7 @@ async def seed_database():
                 12.50,
             ),
             (
-                "mains",
+                cat_ids["mains"],
                 "福建炒虾面",
                 "Hokkien Prawn Mee",
                 "黄面+大虾+蒜蓉+葱",
@@ -113,7 +112,7 @@ async def seed_database():
                 14.00,
             ),
             (
-                "mains",
+                cat_ids["mains"],
                 "鸡饭",
                 "Hainanese Chicken Rice",
                 "白斩鸡+香米+辣椒酱",
@@ -121,7 +120,7 @@ async def seed_database():
                 11.80,
             ),
             (
-                "mains",
+                cat_ids["mains"],
                 "肉骨茶",
                 "Bak Kut Teh",
                 "猪骨汤+蒜+胡椒+油条",
@@ -129,7 +128,7 @@ async def seed_database():
                 12.80,
             ),
             (
-                "mains",
+                cat_ids["mains"],
                 "咖喱鱼头",
                 "Curry Fish Head",
                 "红鱼头+茄子+豆腐+椰浆",
@@ -137,15 +136,16 @@ async def seed_database():
                 18.80,
             ),
             (
-                "mains",
+                cat_ids["mains"],
                 "炒粿条",
                 "Char Kway Teow",
-                "flat noodles+虾+鸡蛋+腊肠",
+                "flat noodles + 虾 + 鸡蛋 + 腊肠",
                 "Flat noodles, prawns, egg, Chinese sausage",
                 10.80,
             ),
+            # Drinks
             (
-                "drinks",
+                cat_ids["drinks"],
                 "新加坡司令",
                 "Singapore Sling",
                 "杜松子+樱桃白兰地+菠萝+柠檬",
@@ -153,7 +153,7 @@ async def seed_database():
                 12.00,
             ),
             (
-                "drinks",
+                cat_ids["drinks"],
                 "美式咖啡",
                 "Americano",
                 "双份浓缩+热水",
@@ -161,7 +161,7 @@ async def seed_database():
                 4.50,
             ),
             (
-                "drinks",
+                cat_ids["drinks"],
                 "拿铁",
                 "Café Latte",
                 "浓缩+蒸奶",
@@ -169,7 +169,7 @@ async def seed_database():
                 5.50,
             ),
             (
-                "drinks",
+                cat_ids["drinks"],
                 "抹茶拿铁",
                 "Matcha Latte",
                 "抹茶+蒸奶+少许糖",
@@ -177,7 +177,7 @@ async def seed_database():
                 6.00,
             ),
             (
-                "drinks",
+                cat_ids["drinks"],
                 "泰式奶茶",
                 "Thai Milk Tea",
                 "泰式红茶+淡奶+冰",
@@ -185,7 +185,7 @@ async def seed_database():
                 5.00,
             ),
             (
-                "drinks",
+                cat_ids["drinks"],
                 "柠檬茶",
                 "Lemon Tea",
                 "红茶+柠檬片+冰",
@@ -193,48 +193,57 @@ async def seed_database():
                 4.00,
             ),
             (
-                "drinks",
+                cat_ids["drinks"],
                 "矿泉水",
                 "Mineral Water",
                 "瓶装 Evian/农夫山泉",
                 "Bottled Evian/Nongfu Spring",
                 3.00,
             ),
+            # Snacks
             (
-                "snacks",
+                cat_ids["snacks"],
                 "沙爹串",
                 "Satay Skewers",
-                "鸡肉/羊肉4串+花生酱",
-                "Chicken/Mutton 4pcs+peanut sauce",
+                "鸡肉/羊肉 4串+花生酱",
+                "Chicken/Mutton 4pcs + peanut sauce",
                 8.80,
             ),
             (
-                "snacks",
+                cat_ids["snacks"],
                 "炸鸡翅",
                 "Crispy Chicken Wings",
                 "6只鸡翅+甜辣酱",
-                "6pcs wings+sweet chili sauce",
+                "6pcs wings + sweet chili sauce",
                 9.80,
             ),
             (
-                "snacks",
+                cat_ids["snacks"],
                 "马来风光",
                 "Sambal Kangkung",
                 "空心菜+参巴酱+小鱼干",
                 "Water spinach, sambal, anchovies",
                 7.50,
             ),
-            ("snacks", "印度煎饼", "Roti Prata", "饼+咖喱汁", "Prata+curry dip", 4.50),
             (
-                "snacks",
+                cat_ids["snacks"],
+                "印度煎饼",
+                "Roti Prata",
+                "饼+咖喱汁",
+                "Prata + curry dip",
+                4.50,
+            ),
+            (
+                cat_ids["snacks"],
                 "咖喱角",
                 "Curry Puff",
                 "土豆+鸡肉+咖喱馅",
                 "Potato, chicken, curry filling",
                 3.50,
             ),
+            # Desserts
             (
-                "desserts",
+                cat_ids["desserts"],
                 "珍多冰",
                 "Ice Kachang",
                 "冰沙+红豆+椰奶+仙草",
@@ -242,7 +251,7 @@ async def seed_database():
                 5.00,
             ),
             (
-                "desserts",
+                cat_ids["desserts"],
                 "榴莲珍多",
                 "Durian Ice Kachang",
                 "冰沙+榴莲肉+椰奶",
@@ -250,7 +259,7 @@ async def seed_database():
                 8.50,
             ),
             (
-                "desserts",
+                cat_ids["desserts"],
                 "红豆冰",
                 "Red Bean Ice",
                 "冰沙+红豆+淡奶",
@@ -258,15 +267,15 @@ async def seed_database():
                 4.50,
             ),
             (
-                "desserts",
+                cat_ids["desserts"],
                 "雪媚娘",
                 "Snow Skin Mochi",
                 "4粒装+芒果/草莓/抹茶",
-                "4pcs+mango/strawberry/matcha",
+                "4pcs + mango/strawberry/matcha",
                 7.80,
             ),
             (
-                "desserts",
+                cat_ids["desserts"],
                 "提拉米苏",
                 "Tiramisu",
                 "经典意式+咖啡力娇酒",
@@ -275,29 +284,61 @@ async def seed_database():
             ),
         ]
 
-        for cat_key, name_zh, name_en, desc_zh, desc_en, price in items:
+        for cat_id, name_zh, name_en, desc_zh, desc_en, price in items:
             await db.execute(
                 text(
                     """
                     INSERT INTO items (category_id, name_zh, name_en, description_zh,
                                        description_en, price_sgd, is_available, sort_order, is_active)
                     VALUES (:cat_id, :name_zh, :name_en, :desc_zh, :desc_en,
-                            :price, true, 0, true)
+                            :price, true, :sort, true)
                     ON CONFLICT DO NOTHING
                 """
                 ),
                 {
-                    "cat_id": cat_uuids[cat_key],
+                    "cat_id": cat_id,
                     "name_zh": name_zh,
                     "name_en": name_en,
                     "desc_zh": desc_zh,
                     "desc_en": desc_en,
                     "price": price,
+                    "sort": 0,
                 },
             )
+        print(f"Inserted {len(items)} menu items")
         await db.commit()
 
-        # Seats
+        # ── Seats ───────────────────────────────────────────────────
+        seats = (
+            [
+                (
+                    "T{:02d}".format(i),
+                    f"室内 {{:02d}}".format(i) if i > 1 else "室内 01",
+                    f"Indoor {{:02d}}".format(i) if i > 1 else "Indoor 01",
+                    "indoor",
+                )
+                for i in range(1, 13)
+            ]
+            + [
+                (
+                    "O{:02d}".format(i),
+                    f"户外 {{:02d}}".format(i),
+                    f"Outdoor {{:02d}}".format(i),
+                    "outdoor",
+                )
+                for i in range(1, 5)
+            ]
+            + [
+                (
+                    "B{:02d}".format(i),
+                    f"吧台 {{:02d}}".format(i),
+                    f"Bar {{:02d}}".format(i),
+                    "bar",
+                )
+                for i in range(1, 7)
+            ]
+        )
+        # Fix static labels
         seat_data = [
             ("T01", "室内 01", "Indoor 01", "indoor"),
             ("T02", "室内 02", "Indoor 02", "indoor"),
@@ -322,6 +363,7 @@ async def seed_database():
             ("B05", "吧台 05", "Bar 05", "bar"),
             ("B06", "吧台 06", "Bar 06", "bar"),
         ]
+
         for seat_id, label_zh, label_en, zone in seat_data:
             await db.execute(
                 text(
@@ -338,6 +380,12 @@ async def seed_database():
                     "zone": zone,
                 },
             )
+        print(f"Inserted {len(seat_data)} seats")
         await db.commit()
 
-    return {"status": "seeded", "message": "Categories, menu items, and seats created"}
+    await engine.dispose()
+    print("Seed complete!")
+
+
+if __name__ == "__main__":
+    asyncio.run(seed())

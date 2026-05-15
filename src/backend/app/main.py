@@ -1,7 +1,11 @@
 # backend/app/main.py
 from contextlib import asynccontextmanager
 
-from app.api.v1 import health, kds, menu, order, payment, seat, webhook, seed
+from app.api.v1 import health, kds, menu, order, payment, seat, seed, webhook
+from app.api.v1.admin import auth as admin_auth
+from app.api.v1.admin import categories as admin_categories
+from app.api.v1.admin import items as admin_items
+from app.api.v1.admin import seats as admin_seats
 from app.config import settings
 from app.utils.timeout import start_timeout_worker, stop_timeout_worker
 from fastapi import FastAPI
@@ -45,3 +49,11 @@ app.include_router(seat.router, prefix="/v1", tags=["Seats"])
 app.include_router(webhook.router, prefix="/v1", tags=["Webhooks"])
 app.include_router(kds.router, prefix="/v1", tags=["KDS"])
 app.include_router(seed.router, prefix="/v1", tags=["Admin"])
+
+# Admin panel routes (protected by JWT)
+app.include_router(admin_auth.router, prefix="/v1/admin", tags=["Admin Auth"])
+app.include_router(
+    admin_categories.router, prefix="/v1/admin/categories", tags=["Admin Categories"]
+)
+app.include_router(admin_items.router, prefix="/v1/admin/items", tags=["Admin Items"])
+app.include_router(admin_seats.router, prefix="/v1/admin/seats", tags=["Admin Seats"])

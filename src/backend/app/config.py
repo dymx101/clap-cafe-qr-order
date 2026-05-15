@@ -24,10 +24,15 @@ class Settings(BaseSettings):
     STRIPE_PAYMENT_TIMEOUT_MINUTES: int = 15
 
     # CORS
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:4173"
+    CORS_ORIGINS: str = (
+        "http://localhost:5173,http://localhost:4173,http://localhost:5174"
+    )
 
     # API Key (KDS internal auth)
     KDS_API_KEY: str = "change-me-in-production"
+
+    # Admin JWT
+    ADMIN_JWT_SECRET: str = "change-me-in-production-jwt-secret"
 
     @property
     def cors_origins_list(self) -> List[str]:

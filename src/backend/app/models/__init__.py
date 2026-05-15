@@ -1,4 +1,5 @@
 # backend/app/models/__init__.py
+from app.models.admin_user import AdminUser
 from app.models.base import Base
 from app.models.category import Category
 from app.models.item import Item
@@ -9,6 +10,7 @@ from app.models.seat import Seat
 
 __all__ = [
     "Base",
+    "AdminUser",
     "Category",
     "Item",
     "Seat",

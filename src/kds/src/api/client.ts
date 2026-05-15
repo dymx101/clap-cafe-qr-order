@@ -7,7 +7,7 @@ const client = axios.create({
 })
 
 client.interceptors.response.use(
-  res => res.data,
+  res => res,
   err => {
     console.error('KDS API Error:', err.response?.data || err.message)
     return Promise.reject(err)

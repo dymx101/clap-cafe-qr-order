@@ -31,6 +31,7 @@ def _order_to_response(order) -> OrderResponse:
         status=order.status,
         payment_status=order.payment_status,
         payment_method=order.payment_method,
+        payment_intent_id=order.payment_intent_id,
         items=[
             {
                 "id": str(oi.id),

@@ -16,7 +16,7 @@ client.interceptors.request.use(config => {
 })
 
 client.interceptors.response.use(
-  res => res.data,
+  res => res,
   err => {
     if (err.response?.status === 422) {
       console.error('API Error:', err.response.data)

@@ -14,5 +14,5 @@ export function getOrderStatus(orderId: string) {
 }
 
 export function cancelOrder(orderId: string, reason: string) {
-  return client.put(`/orders/${orderId}/cancel`, { reason }).then(res => res.data)
+  return client.post(`/orders/${orderId}/cancel`, { reason }).then(res => res.data)
 }

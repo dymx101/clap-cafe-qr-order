@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.order.clapcafe.sg/v1/:path*"
+      "destination": "https://clap-cafe-qr-order.onrender.com/v1/:path*"
     }
   ],
   "headers": [

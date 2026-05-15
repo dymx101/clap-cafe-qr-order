@@ -39,6 +39,7 @@ class OrderResponse(BaseModel):
     status: str
     payment_status: str
     payment_method: Optional[str] = None
+    payment_intent_id: Optional[str] = None
     items: List[OrderItemResponse] = []
     subtotal_sgd: float
     tax_sgd: float

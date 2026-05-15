@@ -1,5 +1,6 @@
 # backend/app/core/order_service.py
 import hashlib
+import json
 import re
 import uuid
 from datetime import datetime
@@ -46,9 +47,25 @@ class ItemOutOfStockError(Exception):
     pass
 
 
+def _item_value(item, key: str, default=None):
+    if isinstance(item, dict):
+        return item.get(key, default)
+    return getattr(item, key, default)
+
+
 def _options_key(seat_id: str, items: list) -> str:
     """生成订单去重key"""
-    raw = f"{seat_id}::{hashlib.md5(str(items).encode()).hexdigest()}"
+    normalized = [
+        {
+            "item_id": str(_item_value(item, "item_id")),
+            "quantity": _item_value(item, "quantity"),
+            "options": _item_value(item, "options", {}) or {},
+            "notes": _item_value(item, "notes"),
+        }
+        for item in items
+    ]
+    payload = json.dumps(normalized, sort_keys=True, separators=(",", ":"))
+    raw = f"{seat_id}::{hashlib.sha256(payload.encode()).hexdigest()}"
     return f"order:dedup:{raw}"
 
 
@@ -85,7 +102,7 @@ class OrderService:
                 return existing_order
 
         # 3. 库存校验 + 价格快照
-        item_ids = [it["item_id"] for it in items]
+        item_ids = [str(_item_value(it, "item_id")) for it in items]
         item_result = await self.db.execute(
             select(Item).where(
                 Item.id.in_([uuid.UUID(i) for i in item_ids]), Item.is_available == True
@@ -96,31 +113,37 @@ class OrderService:
         order_items = []
         subtotal = Decimal("0")
         for it in items:
-            item = item_map.get(it.item_id)
+            item_id = str(_item_value(it, "item_id"))
+            quantity = _item_value(it, "quantity")
+            options = _item_value(it, "options", {}) or {}
+            notes = _item_value(it, "notes")
+            item = item_map.get(item_id)
             if not item:
-                raise ValueError(f"Item {it.item_id} not found or unavailable")
-            if item.stock is not None and item.stock < it.quantity:
+                raise ValueError(f"Item {item_id} not found or unavailable")
+            if item.stock is not None and item.stock < quantity:
                 raise ItemOutOfStockError(f"Item {item.name_zh} stock insufficient")
             price = Decimal(str(item.price_sgd))
-            subtotal += price * it.quantity
+            subtotal += price * quantity
             order_items.append(
                 {
-                    "item_id": uuid.UUID(it.item_id),
+                    "item_id": uuid.UUID(item_id),
                     "item_name_zh": item.name_zh,
                     "item_name_en": item.name_en,
-                    "quantity": it.quantity,
+                    "quantity": quantity,
                     "unit_price": price,
-                    "options": it.options,
-                    "notes": it.notes,
+                    "options": options,
+                    "notes": notes,
                     "print_group": "food" if _is_food(item.category_id) else "drink",
                 }
             )
 
         # 4. 扣减库存
         for it in items:
-            item = item_map[it.item_id]
+            item_id = str(_item_value(it, "item_id"))
+            quantity = _item_value(it, "quantity")
+            item = item_map[item_id]
             if item.stock is not None:
-                item.stock -= it.quantity
+                item.stock -= quantity
 
         tax = (subtotal * TAX_RATE).quantize(Decimal("0.01"))
         total = subtotal + tax

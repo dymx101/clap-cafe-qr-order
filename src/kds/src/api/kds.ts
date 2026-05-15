@@ -12,12 +12,12 @@ interface StatusUpdateResponse {
 export const kdsApi = {
   /** 获取所有活跃订单 */
   async getOrders(): Promise<OrdersResponse> {
-    return client.get('/kds/orders')
+    return client.get<OrdersResponse>('/kds/orders').then(res => res.data)
   },
 
   /** 更新订单状态 */
   async updateStatus(orderId: string, status: string): Promise<StatusUpdateResponse> {
-    return client.put(`/kds/orders/${orderId}/status`, { status })
+    return client.put<StatusUpdateResponse>(`/kds/orders/${orderId}/status`, { status }).then(res => res.data)
   },
 
   /** SSE 流地址 */

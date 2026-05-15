@@ -38,11 +38,11 @@ async def get_menu(
 
     cats_out = []
     for cat in categories:
-        name = cat.name_zh if lang == "zh" else cat.name_en
         items_out = []
         for it in items_by_cat.get(str(cat.id), []):
             item_data = {
                 "id": str(it.id),
+                "category_id": str(it.category_id),
                 "name_zh": it.name_zh,
                 "name_en": it.name_en,
                 "description_zh": it.description_zh,
@@ -51,12 +51,15 @@ async def get_menu(
                 "image_url": it.image_url,
                 "options_config": it.options_config or {},
                 "is_available": it.is_available,
+                "stock": it.stock,
+                "sort_order": it.sort_order,
             }
             items_out.append(ItemResponse(**item_data))
         cats_out.append(
             CategoryWithItems(
                 id=str(cat.id),
-                name=name,
+                name_zh=cat.name_zh,
+                name_en=cat.name_en,
                 sort_order=cat.sort_order,
                 items=items_out,
             )
@@ -86,6 +89,7 @@ async def get_item(
 
     return ItemResponse(
         id=str(item.id),
+        category_id=str(item.category_id),
         name_zh=item.name_zh,
         name_en=item.name_en,
         description_zh=item.description_zh,
@@ -94,4 +98,6 @@ async def get_item(
         image_url=item.image_url,
         options_config=item.options_config or {},
         is_available=item.is_available,
+        stock=item.stock,
+        sort_order=item.sort_order,
     )

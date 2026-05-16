@@ -162,6 +162,44 @@ async def admin_reset_password(
     return {"message": "Password reset successfully"}
 
 
+@router.post("/debug-migrate", status_code=204)
+async def admin_debug_migrate(
+    db: AsyncSession = Depends(get_db),
+):
+    """Debug: run raw SQL to add missing columns."""
+    from sqlalchemy import text
+
+    for stmt in [
+        "ALTER TABLE items ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER NOT NULL DEFAULT 5",
+        "ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255)",
+        "ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ",
+    ]:
+        try:
+            await db.execute(text(stmt))
+        except Exception:
+            pass
+
+    try:
+        await db.execute(
+            text(
+                """CREATE TABLE IF NOT EXISTS admin_audit_logs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            admin_user_id UUID NOT NULL REFERENCES admin_users(id),
+            action VARCHAR(50) NOT NULL,
+            target_type VARCHAR(50) NOT NULL,
+            target_id VARCHAR(100) NOT NULL,
+            old_value JSONB,
+            new_value JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )"""
+            )
+        )
+    except Exception:
+        pass
+
+    await db.commit()
+
+
 @router.post("/debug-reset-password")
 async def admin_debug_reset_password(
     db: AsyncSession = Depends(get_db),

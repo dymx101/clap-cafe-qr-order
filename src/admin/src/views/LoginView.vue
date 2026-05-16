@@ -60,7 +60,7 @@
         </button>
 
         <div class="forgot-link">
-          <button type="button" class="btn-link" @click="handleForgot">
+          <button type="button" class="btn-link" @click="openForgotModal">
             Forgot password?
           </button>
         </div>
@@ -70,20 +70,28 @@
       <div v-if="showForgot" class="modal-overlay" @click.self="showForgot = false">
         <div class="modal card">
           <h2 class="modal-title">Reset Password</h2>
-          <div v-if="forgotSent" class="forgot-success">
-            <div class="success-icon">✓</div>
-            <p>Check <strong>clapcafe001@gmail.com</strong> for a reset link.</p>
-            <p class="success-note">The link expires in 1 hour.</p>
-          </div>
-          <div v-else class="forgot-sending">
-            <div class="spinner"></div>
+
+          <div v-if="forgotLoading" class="forgot-state">
+            <div class="spinner-lg"></div>
             <p>Sending reset link...</p>
           </div>
-          <div class="modal-actions" v-if="!forgotSent">
-            <button type="button" class="btn btn-outline" @click="showForgot = false">Cancel</button>
+
+          <div v-else-if="forgotSent" class="forgot-state success">
+            <div class="success-icon">✓</div>
+            <p class="success-title">Email sent!</p>
+            <p class="success-desc">Check <strong>clapcafe001@gmail.com</strong> for a reset link. It expires in 1 hour.</p>
+            <button class="btn btn-primary" @click="showForgot = false">Got it</button>
           </div>
-          <div class="modal-actions" v-else>
-            <button type="button" class="btn btn-primary" @click="showForgot = false">Got it</button>
+
+          <div v-else class="forgot-state">
+            <div v-if="forgotError" class="login-error">{{ forgotError }}</div>
+            <p class="forgot-desc">We'll send a password reset link to your registered email.</p>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-outline" @click="showForgot = false">Cancel</button>
+              <button type="button" class="btn btn-primary" @click="handleForgot">
+                Send Reset Link
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -115,6 +123,12 @@ async function handleLogin() {
   } catch {
     // error is displayed via auth.error
   }
+}
+
+function openForgotModal() {
+  forgotSent.value = false
+  forgotError.value = ''
+  showForgot.value = true
 }
 
 async function handleForgot() {
@@ -253,57 +267,59 @@ async function handleForgot() {
   opacity: 0.75;
 }
 
-.forgot-success {
+.forgot-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  background: var(--color-success-soft);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-success);
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
   text-align: center;
 }
 
-.success-icon {
-  width: 48px;
-  height: 48px;
+.forgot-state.success .success-icon {
+  width: 56px;
+  height: 56px;
   background: var(--color-success);
   color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
 }
 
-.forgot-success p {
+.success-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
   color: var(--color-success);
   margin: 0;
 }
 
-.success-note {
-  font-size: var(--font-size-xs) !important;
-  opacity: 0.7;
-}
-
-.forgot-sending {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-5);
+.success-desc {
   color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  margin: 0;
 }
 
-.forgot-success {
-  padding: var(--space-4);
-  background: var(--color-success-soft);
-  color: var(--color-success);
-  border-radius: var(--radius-md);
-  text-align: center;
-  border: 1px solid var(--color-success);
+.forgot-desc {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.spinner-lg {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: var(--space-4) 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Modal */
@@ -318,5 +334,5 @@ async function handleForgot() {
 }
 .modal-title { font-size: var(--font-size-xl); font-weight: 600; margin-bottom: var(--space-5); }
 .modal-form { display: flex; flex-direction: column; gap: var(--space-4); }
-.modal-actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-4); }
+.modal-actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-4); width: 100%; }
 </style>

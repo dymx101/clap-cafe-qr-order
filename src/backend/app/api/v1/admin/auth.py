@@ -162,6 +162,25 @@ async def admin_reset_password(
     return {"message": "Password reset successfully"}
 
 
+@router.post("/debug-reset-password")
+async def admin_debug_reset_password(
+    data: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Debug: reset password for clapcafe001@gmail.com. Token not required."""
+    result = await db.execute(
+        select(AdminUser).where(AdminUser.email == "clapcafe001@gmail.com")
+    )
+    admin = result.scalar_one_or_none()
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    admin.hashed_password = hash_password(data.new_password)
+    admin.password_reset_token = None
+    admin.password_reset_expires = None
+    await db.commit()
+    return {"message": "Password reset successfully"}
+
+
 @router.post("/setup", response_model=AdminUserResponse, status_code=201)
 async def admin_setup(
     data: AdminLoginRequest,

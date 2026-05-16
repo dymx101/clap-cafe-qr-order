@@ -204,7 +204,19 @@ async def admin_debug_migrate(
 async def admin_debug_reset_password(
     db: AsyncSession = Depends(get_db),
 ):
-    """Debug: reset password for clapcafe001@gmail.com. No token required."""
+    """Debug: add missing columns then reset password. No token required."""
+    from sqlalchemy import text
+
+    # First: add missing low_stock_threshold column (defense in depth)
+    try:
+        await db.execute(
+            text(
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER NOT NULL DEFAULT 5"
+            )
+        )
+    except Exception:
+        pass
+
     result = await db.execute(
         select(AdminUser).where(AdminUser.email == "admin@clapcafe.sg")
     )

@@ -245,11 +245,14 @@ async function loadOrders(p = 1) {
   try {
     const params: any = { page: p, limit: limit.value }
     if (filterStatus.value) params.status = filterStatus.value
+    console.log('[Orders] GET /admin/orders with params:', params)
     const res = await ordersApi.list(params)
+    console.log('[Orders] Response:', res.data)
     orders.value = res.data.orders
     totalCount.value = res.data.total_count
-  } catch { /* ignore */ }
-  finally { loading.value = false }
+  } catch (err: any) {
+    console.error('[Orders] Error:', err?.response?.data)
+  } finally { loading.value = false }
 }
 
 function setStatusFilter(status: string) {

@@ -19,7 +19,15 @@ client.interceptors.request.use(config => {
 client.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status
+    const url = err.config?.url
+    const method = err.config?.method?.toUpperCase()
+    const authHeader = err.config?.headers?.Authorization
+    console.log(`[Client] ${method} ${url} → ${status}`, {
+      authHeader: authHeader ? `Bearer ${authHeader.substring(0, 20)}...` : 'MISSING',
+      response: err.response?.data
+    })
+    if (status === 401) {
       localStorage.removeItem('admin_token')
       if (window.location.pathname !== '/login') {
         window.location.replace('/login')

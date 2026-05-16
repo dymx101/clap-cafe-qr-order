@@ -29,5 +29,5 @@ class Category(Base):
     )
 
     items: Mapped[list["Item"]] = relationship(
-        "Item", back_populates="category", lazy="selectin"
+        "Item", back_populates="category", lazy="noload"
     )

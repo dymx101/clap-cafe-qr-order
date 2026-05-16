@@ -162,30 +162,6 @@ async def admin_reset_password(
     return {"message": "Password reset successfully"}
 
 
-@router.post("/migrate-columns")
-async def admin_migrate_columns(
-    db: AsyncSession = Depends(get_db),
-):
-    """Run DB migration for new admin columns. Temporary debug endpoint."""
-    from sqlalchemy import text
-
-    try:
-        await db.execute(
-            text(
-                "ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255)"
-            )
-        )
-        await db.execute(
-            text(
-                "ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ"
-            )
-        )
-        await db.commit()
-        return {"message": "Migration completed successfully"}
-    except Exception as e:
-        return {"message": f"Migration error: {str(e)}"}
-
-
 @router.post("/setup", response_model=AdminUserResponse, status_code=201)
 async def admin_setup(
     data: AdminLoginRequest,

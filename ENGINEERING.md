@@ -1,9 +1,10 @@
 # Clap Cafe 扫码点餐系统 — 工程文档
 ## Clap Cafe QR Ordering System — Engineering Documentation
 
-**文档版本 / Document Version:** v1.0
+**文档版本 / Document Version:** v1.1
 **编制日期 / Created:** 2026-05-14
-**基于产品文档 / Based on:** QR-Ordering-System.md v1.0
+**修订日期 / Updated:** 2026-05-16
+**基于产品文档 / Based on:** QR-Ordering-System.md v1.1
 
 ---
 
@@ -98,22 +99,29 @@ clap-cafe-qr-order/
 │   │   │   │   ├── order.py
 │   │   │   │   ├── payment.py
 │   │   │   │   ├── seat.py
-│   │   │   │   ├── webhook.py
-│   │   │   │   └── health.py
-│   │   │   └── prefix.py      # API 前缀处理
+│   │   │   │   ├── kds.py         # SSE real-time stream
+│   │   │   │   ├── webhook.py     # Stripe webhook handler
+│   │   │   │   ├── health.py
+│   │   │   │   └── admin/         # JWT-protected admin routes
+│   │   │   │       ├── __init__.py
+│   │   │   │       ├── auth.py
+│   │   │   │       ├── categories.py
+│   │   │   │       ├── items.py
+│   │   │   │       └── seats.py
 │   │   ├── core/              # 核心业务逻辑
 │   │   │   ├── __init__.py
 │   │   │   ├── order_service.py
 │   │   │   ├── payment_service.py
-│   │   │   ├── seat_service.py
-│   │   │   └── print_service.py
-│   │   ├── models/           # SQLAlchemy 模型
+│   │   │   └── seat_service.py
+│   │   ├── models/           # SQLAlchemy ORM 模型
 │   │   │   ├── __init__.py
+│   │   │   ├── base.py       # DeclarativeBase
 │   │   │   ├── category.py
 │   │   │   ├── item.py
 │   │   │   ├── seat.py
 │   │   │   ├── order.py
-│   │   │   └── order_item.py
+│   │   │   ├── order_item.py
+│   │   │   └── payment.py    # PaymentTransaction
 │   │   ├── schemas/          # Pydantic schemas
 │   │   │   ├── __init__.py
 │   │   │   ├── menu.py
@@ -135,47 +143,55 @@ clap-cafe-qr-order/
 │   ├── Dockerfile
 │   └── pytest.ini
 │
-├── kds/                       # 后厨显示系统 (KDS)
+├── kds/                       # 后厨显示系统 (Kitchen Display System)
 │   ├── public/
 │   │   └── index.html
 │   ├── src/
-│   │   ├── App.vue
+│   │   ├── App.vue            # KDS 主应用 (components-based, no views/)
 │   │   ├── api/
-│   │   │   └── kds.ts
+│   │   │   └── kds.ts         # SSE stream client + order actions
 │   │   ├── components/
 │   │   │   ├── OrderCard.vue
 │   │   │   ├── OrderList.vue
-│   │   │   └── AudioAlert.vue
+│   │   │   ├── AudioAlert.vue
+│   │   │   └── StatusFilter.vue
+│   │   ├── stores/
+│   │   │   └── kds.ts         # Pinia store for orders
 │   │   └── main.ts
 │   ├── vite.config.ts
 │   └── package.json
 │
-├── admin/                     # 管理后台 (可选)
+├── admin/                     # 管理后台
 │   ├── src/
+│   │   ├── api/               # Axios client + admin API calls
+│   │   ├── components/         # Shared components
+│   │   ├── stores/            # Pinia (auth, menu, seat)
+│   │   ├── views/
+│   │   │   ├── LoginView.vue
+│   │   │   ├── DashboardView.vue
+│   │   │   ├── MenuManagerView.vue
+│   │   │   └── SeatManagerView.vue
+│   │   ├── App.vue
+│   │   └── main.ts
+│   ├── vite.config.ts
 │   └── package.json
 │
-├── infra/                     # 基础设施即代码
-│   ├── terraform/
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   └── outputs.tf
-│   ├── docker-compose.yml
-│   └── nginx.conf
+├── scripts/
+│   ├── generate_qr.py         # QR 码批量生成 (T01-T12, O01-O04, B01-B06)
+│   └── seed_menu.py           # 菜单初始化数据
 │
-├── docs/                      # 文档
-│   ├── QR-Ordering-System.md  # 产品文档
-│   ├── qr_codes/              # QR 码静态文件
-│   └── api-schema/            # OpenAPI schema
+├── docs/
+│   ├── QR-Ordering-System.md   # 产品文档 v1.1
+│   └── api-schema/
 │       └── openapi.json
 │
-├── scripts/
-│   ├── generate_qr.py         # QR 码批量生成脚本
-│   ├── seed_menu.py           # 菜单初始化数据
-│   └── init_db.py             # 数据库初始化
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 │
 ├── .env.example
 ├── .gitignore
-├── docker-compose.yml         # 全量开发环境
+├── CLAUDE.md                   # Claude Code 项目规范
 └── README.md
 ```
 
@@ -190,18 +206,16 @@ clap-cafe-qr-order/
 | 状态管理 | Pinia | ^2.1 | 前端状态 |
 | 国际化 | Vue I18n | ^9.0 | 中英文 |
 | HTTP 客户端 | Axios | ^1.6 | API 请求 |
-| 后端框架 | FastAPI | ^0.109 | REST API |
+| 后端框架 | FastAPI | ^0.115 | REST API |
 | Python | Python | 3.11+ | 后端语言 |
-| ORM | SQLAlchemy 2.0 | ^2.0 | 数据库 ORM |
+| ORM | SQLAlchemy 2.0 (async) | ^2.0 | 数据库 ORM |
 | 数据库 | PostgreSQL | 15 | 主数据库 |
-| 缓存 | Redis | 7 | Session/队列 |
-| 支付 | Stripe Python SDK | ^6.0 | 支付集成 |
-| 打印 | python-escpos | ^3.0 | 小票打印 |
-| 推送 | Twilio / OneSignal | — | 订单通知 |
+| 缓存 | Redis (Upstash) | 7 | SSE pub/sub + 订单去重 |
+| 支付 | Stripe Python SDK | ^8.10 | 支付集成 |
 | KDS 前端 | Vue 3 | ^3.4 | 后厨显示 |
 | 容器化 | Docker | 24 | 开发/部署 |
-| CDN | Cloudflare | — | 静态资源 |
-| 托管 | Railway / Render | — | 后端托管 |
+| CDN | Cloudflare | — | DNS + SSL |
+| 托管 | Railway (后端) + Vercel (前端) | — | 部署 |
 
 ---
 
@@ -1238,11 +1252,7 @@ async def orders_stream(request: Request):
                     │  │ Railway Redis       │   │
                     │  └─────────────────────┘   │
                     └────────────────────────────┘
-                                   │
-                          ┌────────▼────────┐
-                          │  AWS S3 / R2    │
-                          │  (菜单图片)     │
-                          └─────────────────┘
+                                   └──────────────────────┘
 ```
 
 > **架构说明：** Railway 直接暴露 HTTPS 端点（`https://api.order.clapcafe.sg`），无需 Cloudflare Workers 中转。Workers 仅用于边缘计算场景（如 A/B 测试、请求日志），不作为反向代理。
@@ -1710,4 +1720,4 @@ curl http://localhost:8000/openapi.json > ../docs/api-schema/openapi.json
 ---
 
 *本文档与产品文档 QR-Ordering-System.md 配套使用*
-*文档版本：v1.0 | 编制日期：2026-05-14*
+*文档版本：v1.1 | 编制日期：2026-05-14 | 修订：2026-05-16*

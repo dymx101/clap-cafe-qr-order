@@ -1,4 +1,5 @@
 # backend/app/schemas/admin.py
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
@@ -26,6 +27,20 @@ class AdminUserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=6, max_length=128)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6, max_length=128)
 
 
 # --- Category CRUD ---
@@ -66,6 +81,7 @@ class ItemCreateRequest(BaseModel):
     options_config: dict = Field(default_factory=dict)
     is_available: bool = True
     stock: Optional[int] = None
+    low_stock_threshold: int = 5
     sort_order: int = 0
     is_active: bool = True
 
@@ -81,6 +97,7 @@ class ItemUpdateRequest(BaseModel):
     options_config: Optional[dict] = None
     is_available: Optional[bool] = None
     stock: Optional[int] = None
+    low_stock_threshold: Optional[int] = None
     sort_order: Optional[int] = None
     is_active: Optional[bool] = None
 
@@ -97,6 +114,8 @@ class ItemAdminResponse(BaseModel):
     options_config: dict = Field(default_factory=dict)
     is_available: bool
     stock: Optional[int] = None
+    low_stock_threshold: int
+    is_low_stock: bool = False
     sort_order: int
     is_active: bool
 
@@ -120,3 +139,40 @@ class SeatUpdateRequest(BaseModel):
     zone: Optional[str] = Field(None, max_length=20)
     status: Optional[str] = None
     is_active: Optional[bool] = None
+
+
+# --- Order Admin ---
+class OrderAdminResponse(BaseModel):
+    id: str
+    seat_id: str
+    status: str
+    payment_status: str
+    payment_method: Optional[str] = None
+    payment_intent_id: Optional[str] = None
+    items: list = []
+    subtotal_sgd: float
+    tax_sgd: float
+    total_sgd: float
+    notes: Optional[str] = None
+    customer_notes: Optional[str] = None
+    rejected_reason: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    paid_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrderListResponse(BaseModel):
+    orders: list[OrderAdminResponse]
+    total_count: int
+    page: int
+    limit: int
+
+
+class OrderNotesUpdate(BaseModel):
+    customer_notes: Optional[str] = None
+    notes: Optional[str] = None

@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { SSEStatus } from '@/types/kds'
 
 const props = defineProps<{
   status: SSEStatus
 }>()
 
+const { t } = useI18n()
+
 const statusConfig = computed(() => {
-  const configs: Record<SSEStatus, { color: string; label: string }> = {
-    connected: { color: '#10b981', label: '已连接' },
-    reconnecting: { color: '#f59e0b', label: '重新连接中...' },
-    error: { color: '#ef4444', label: '连接失败' },
-    closed: { color: '#6b7280', label: '已断开' }
+  const configs: Record<SSEStatus, { color: string; labelKey: string }> = {
+    connected: { color: '#10b981', labelKey: 'kds.connection.connected' },
+    reconnecting: { color: '#f59e0b', labelKey: 'kds.connection.reconnecting' },
+    error: { color: '#ef4444', labelKey: 'kds.connection.error' },
+    closed: { color: '#6b7280', labelKey: 'kds.connection.closed' }
   }
   return configs[props.status]
 })
@@ -20,7 +23,7 @@ const statusConfig = computed(() => {
 <template>
   <div class="connection-status">
     <span class="dot" :style="{ background: statusConfig.color }"></span>
-    <span class="label">{{ statusConfig.label }}</span>
+    <span class="label">{{ t(statusConfig.labelKey) }}</span>
   </div>
 </template>
 

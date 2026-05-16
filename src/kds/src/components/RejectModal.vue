@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   visible: boolean
@@ -14,9 +17,9 @@ const emit = defineEmits<{
 const selectedReason = ref('')
 
 const reasons = [
-  { value: 'sold_out', label: '食材售罄' },
-  { value: 'busy', label: '人手不足' },
-  { value: 'other', label: '其他原因' }
+  { value: 'sold_out', labelKey: 'kds.reject.soldOut' },
+  { value: 'busy', labelKey: 'kds.reject.busy' },
+  { value: 'other', labelKey: 'kds.reject.other' }
 ]
 
 watch(() => props.visible, (val) => {
@@ -37,7 +40,7 @@ function handleConfirm() {
     <div v-if="visible" class="modal-overlay" @click.self="emit('close')">
       <div class="modal">
         <div class="modal-header">
-          <h3>拒单原因</h3>
+          <h3>{{ t('kds.reject.title') }}</h3>
           <button class="close-btn" @click="emit('close')">✕</button>
         </div>
 
@@ -53,18 +56,18 @@ function handleConfirm() {
               v-model="selectedReason"
             />
             <span class="radio-circle"></span>
-            <span class="reason-label">{{ reason.label }}</span>
+            <span class="reason-label">{{ t(reason.labelKey) }}</span>
           </label>
         </div>
 
         <div class="modal-footer">
-          <button class="btn-cancel" @click="emit('close')">取消</button>
+          <button class="btn-cancel" @click="emit('close')">{{ t('common.cancel') }}</button>
           <button
             class="btn-confirm"
             :disabled="!selectedReason"
             @click="handleConfirm"
           >
-            确认拒单
+            {{ t('kds.reject.confirm') }}
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 # backend/app/models/__init__.py
+from app.models.admin_audit_log import AdminAuditLog
 from app.models.admin_user import AdminUser
 from app.models.base import Base
 from app.models.category import Category

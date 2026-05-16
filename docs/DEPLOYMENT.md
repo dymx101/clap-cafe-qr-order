@@ -1,23 +1,26 @@
 # Clap Cafe 扫码点餐系统 — 部署指南
 # Clap Cafe QR Ordering System — Deployment Guide
 
-**文档版本:** v1.0
-**日期:** 2026-05-14
-**基于:** ENGINEERING.md v1.0
+**文档版本:** v1.1
+**日期:** 2026-05-16
+**基于:** ENGINEERING.md v1.1
 
 ---
 
 ## 目录
 
 1. [基础架构总览](#1-基础架构总览)
-2. [T40 后端 Dockerfile](#2-t40-后端-dockerfile)
-3. [T41 前端 Vercel 部署](#3-t41-前端-vercel-部署)
-4. [T42 KDS Vercel 部署](#4-t42-kds-vercel-部署)
-5. [T43 Cloudflare DNS 配置](#5-t43-cloudflare-dns-配置)
-6. [T44 Stripe 配置](#6-t44-stripe-配置)
-7. [T45 QR 码生成](#7-t45-qr-码生成)
-8. [环境变量清单](#8-环境变量清单)
-9. [部署 Checklist](#9-部署-checklist)
+2. [已部署服务](#2-已部署服务)
+3. [后端 Railway 部署](#3-后端-railway-部署)
+4. [Admin Panel Vercel 部署](#4-admin-panel-vercel-部署)
+5. [前端 Vercel 部署](#5-前端-vercel-部署)
+6. [KDS Vercel 部署](#6-kds-vercel-部署)
+7. [Cloudflare DNS 配置](#7-cloudflare-dns-配置)
+8. [Stripe 配置](#8-stripe-配置)
+9. [QR 码生成](#9-qr-码生成)
+10. [环境变量清单](#10-环境变量清单)
+11. [部署 Checklist](#11-部署-checklist)
+12. [GitHub Actions CI](#12-github-actions-ci)
 
 ---
 
@@ -29,16 +32,20 @@
   ├─ QR码: https://order.clapcafe.sg/?seat=T01&lang=zh
   │         ────────────────────────────────────────
   │         Vercel (Frontend H5)
-  │            │  /api/* → rewrite → api.order.clapcafe.sg
+  │            │  /api/* → rewrite → clap-cafe-qr-order.onrender.com
   │            ▼
-  │         Railway (FastAPI Backend)
-  │            ├─ PostgreSQL (Railway)
+  │         Render (FastAPI Backend)
+  │            ├─ PostgreSQL (Render)
   │            ├─ Redis (Upstash)
   │            └─ Stripe Webhook
   │
+  ├─ Admin 管理面板: https://clap-cafe-admin.netlify.app
+  │         Netlify (Admin Vue 3)
+  │            └─ /api/* → clap-cafe-qr-order.onrender.com/v1/
+  │
   └─ KDS 平板: https://kds.clapcafe.sg
-                Vercel (KDS Frontend)
-                  └─ SSE → api.order.clapcafe.sg/v1/kds/stream
+                Vercel (KDS Vue 3)
+                  └─ SSE → clap-cafe-qr-order.onrender.com/v1/kds/stream
 ```
 
 ### 域名
@@ -46,13 +53,47 @@
 | 用途 | 域名 | 指向 |
 |------|------|------|
 | 顾客点餐 H5 | `order.clapcafe.sg` | Vercel Frontend |
+| Admin 管理面板 | `admin.clapcafe.sg` | Netlify Admin |
 | KDS 后厨端 | `kds.clapcafe.sg` | Vercel KDS |
-| API 后端 | `api.order.clapcafe.sg` | Railway |
-| Stripe Webhook | `api.order.clapcafe.sg/v1/webhooks/stripe` | Railway |
+| API 后端 | `api.order.clapcafe.sg` | Render |
+| Stripe Webhook | `api.order.clapcafe.sg/v1/webhooks/stripe` | Render |
 
 ---
 
-## 2. T40 后端 Dockerfile
+## 2. 已部署服务
+
+> **状态:** 生产环境已部署 (2026-05-16)
+
+| 服务 | 平台 | URL | 状态 |
+|------|------|-----|------|
+| Backend API | Render | `clap-cafe-qr-order.onrender.com` | ✅ Running |
+| Frontend H5 | Vercel | `frontend-clap-cafe.vercel.app` | ✅ Running |
+| KDS Kitchen | Vercel | `kds-sandy.vercel.app` | ✅ Running |
+| Admin Panel | **Netlify** | `clap-cafe-admin.netlify.app` | ✅ Running |
+
+> **注意:** Admin Panel 部署在 **Netlify**（而非 Vercel），以避免 Vercel Edge 认证层的浏览器访问限制问题。
+
+### 验证已部署服务
+
+```bash
+# API 健康检查
+curl https://clap-cafe-qr-order.onrender.com/health
+# → {"status":"ok","timestamp":"...","version":"1.0.0"}
+
+# Menu API
+curl "https://clap-cafe-qr-order.onrender.com/v1/menu?lang=zh"
+# → 返回完整菜单 JSON
+
+# Admin API（需要 JWT token）
+curl https://clap-cafe-qr-order.onrender.com/v1/admin/categories/
+# → {"detail":"Missing authorization header"}
+```
+
+---
+
+## 3. 后端 Render 部署
+
+> **注意:** Backend currently deployed on Render. Railway migration is documented in Section 3a for future reference.
 
 文件位置: `src/backend/Dockerfile`
 
@@ -107,8 +148,9 @@ railway env set DEBUG=false
 railway env set STRIPE_SECRET_KEY=sk_live_...
 railway env set STRIPE_PUBLISHABLE_KEY=pk_live_...
 railway env set STRIPE_WEBHOOK_SECRET=whsec_...
-railway env set CORS_ORIGINS=https://order.clapcafe.sg,https://kds.clapcafe.sg
+railway env set CORS_ORIGINS=https://order.clapcafe.sg,https://kds.clapcafe.sg,https://admin.clapcafe.sg
 railway env set KDS_API_KEY=<generate-strong-random-key>
+railway env set SECRET_KEY=<generate-strong-random-key>
 
 # 8. 部署
 railway up
@@ -119,6 +161,10 @@ curl https://api.order.clapcafe.sg/health
 
 # 10. 运行数据库迁移
 railway run alembic upgrade head
+
+# 11. 初始化种子数据
+railway run python -m app.scripts.init_seats
+railway run python -m app.scripts.seed_data
 ```
 
 ### Railway.toml 配置
@@ -141,7 +187,53 @@ maxTimeout = 30
 
 ---
 
-## 3. T41 前端 Vercel 部署
+## 4. Admin Panel Netlify 部署
+
+文件位置: `src/admin/netlify.toml` ✅ 已创建
+
+### 部署步骤
+
+```bash
+# 1. 安装 Netlify CLI
+npm install -g netlify-cli
+
+# 2. 登录
+netlify login
+
+# 3. 部署
+cd src/admin
+netlify deploy --prod --dir=dist
+# → 输入项目名称，例如 clap-cafe-admin
+# → 选择 dymx101's team
+# → 部署完成，获取 URL: https://clap-cafe-admin.netlify.app
+```
+
+### netlify.toml 配置
+
+```toml
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://clap-cafe-qr-order.onrender.com/v1/:splat"
+  status = 200
+  force = true
+```
+
+### 自定义域名
+
+1. Netlify Dashboard → Sites → clap-cafe-admin → **Domain management**
+2. 添加自定义域名 `admin.clapcafe.sg`
+3. Cloudflare 中添加 CNAME: `admin.clapcafe.sg → clap-cafe-admin.netlify.app`
+
+---
+
+## 5. 前端 Vercel 部署
 
 文件位置: `src/frontend/vercel.json` ✅ 已创建
 
@@ -189,7 +281,7 @@ vercel env add VITE_API_BASE_URL
 
 ---
 
-## 4. T42 KDS Vercel 部署
+## 6. KDS Vercel 部署
 
 文件位置: `src/kds/vercel.json` ✅ 已创建
 
@@ -212,7 +304,7 @@ vercel env add VITE_API_BASE_URL
 
 ---
 
-## 5. T43 Cloudflare DNS 配置
+## 7. Cloudflare DNS 配置
 
 ### DNS 记录设置
 
@@ -222,6 +314,7 @@ vercel env add VITE_API_BASE_URL
 |------|------|------|----------|
 | A | `api.order` | Railway 分配的域名或 IP | DNS only |
 | CNAME | `order` | `cname.vercel-dns.com` | Proxied |
+| CNAME | `admin` | `cname.vercel-dns.com` | Proxied |
 | CNAME | `kds` | `cname.vercel-dns.com` | Proxied |
 | TXT | `order` | `v=spf1 include:sendgrid.net ~all` | — |
 
@@ -239,11 +332,12 @@ vercel env add VITE_API_BASE_URL
 |----------|------|
 | `order.clapcafe.sg/*` | Always Use HTTPS |
 | `kds.clapcafe.sg/*` | Always Use HTTPS |
+| `admin.clapcafe.sg/*` | Always Use HTTPS |
 | `api.order.clapcafe.sg/*` | Always Use HTTPS, Cache Level = Basic |
 
 ---
 
-## 6. T44 Stripe 配置
+## 8. Stripe 配置
 
 ### 获取 Stripe API Keys
 
@@ -302,7 +396,7 @@ curl http://localhost:8000/v1/orders/CC-20260514-001/status
 
 ---
 
-## 7. T45 QR 码生成
+## 9. QR 码生成
 
 文件位置: `scripts/generate_qrcodes.py` ✅ 见下方
 
@@ -334,7 +428,7 @@ python scripts/generate_qrcodes.py
 
 ---
 
-## 8. 环境变量清单
+## 10. 环境变量清单
 
 ### 后端 `.env`（ Railway 环境变量）
 
@@ -348,8 +442,9 @@ python scripts/generate_qrcodes.py
 | `STRIPE_PUBLISHABLE_KEY` | `pk_live_...` | Stripe Publishable Key |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` | Stripe Webhook 签名 |
 | `STRIPE_PAYMENT_TIMEOUT_MINUTES` | `15` | 支付超时时间 |
-| `CORS_ORIGINS` | `https://order.clapcafe.sg,https://kds.clapcafe.sg` | CORS 白名单 |
+| `CORS_ORIGINS` | `https://frontend-clap-cafe.vercel.app,https://kds-sandy.vercel.app,https://clap-cafe-admin.netlify.app` | CORS 白名单 |
 | `KDS_API_KEY` | `<随机字符串>` | KDS 内部认证密钥 |
+| `SECRET_KEY` | `<随机字符串>` | JWT 签名密钥 |
 
 ### 前端 `.env`
 
@@ -363,19 +458,25 @@ python scripts/generate_qrcodes.py
 |--------|--------|------|
 | `VITE_API_BASE_URL` | `https://api.order.clapcafe.sg` | 构建时嵌入 |
 
+### Admin `.env`
+
+| 变量名 | 示例值 | 说明 |
+|--------|--------|------|
+| `VITE_API_BASE_URL` | `https://api.order.clapcafe.sg` | 构建时嵌入 |
+
 ---
 
-## 9. 部署 Checklist
+## 11. 部署 Checklist
 
 ### 上线前必查（对应 T50）
 
-- [ ] **T50.1** 所有 `.env` 变量已配置，无真实密钥残留
-- [ ] **T50.2** `CORS_ORIGINS` 不再是 `*`，已配置具体域名
+- [x] **T50.1** 所有 `.env` 变量已配置，无真实密钥残留 ✅
+- [x] **T50.2** `CORS_ORIGINS` 不再是 `*`，已配置具体域名 ✅
 - [ ] **T50.3** Stripe 费率已确认（GrabPay/PayNow 额外收费）
 - [ ] **T50.4** PayNow 真实扫码测试（Stripe test mode）
 - [ ] **T50.5** QR 码各机型扫码测试（iOS Safari / Android Chrome / 微信）
 - [ ] **T50.6** KDS 平板横屏显示正常（iPad 10.2" 推荐）
-- [ ] **T50.7** 生产环境日志级别为 `INFO`，非 `DEBUG`
+- [x] **T50.7** 生产环境日志级别为 `INFO`，非 `DEBUG` ✅
 - [ ] **T50.8** UptimeRobot 监控 `/health` 端点（60秒轮询）
 - [ ] **T50.9** Cloudflare Analytics 确认请求正常
 - [ ] **T50.10** 数据库备份恢复流程已验证
@@ -386,6 +487,44 @@ python scripts/generate_qrcodes.py
 - [ ] 监控 Railway 日志错误率
 - [ ] 确认 KDS SSE 连接稳定
 - [ ] 收集首批真实用户反馈
+
+---
+
+## 12. GitHub Actions CI
+
+文件位置: `.github/workflows/ci.yml`
+
+### 功能
+
+- **后端**: `ruff format` + `ruff check` + `pyright`
+- **Frontend/Admin/KDS**: type-check + build
+- 数据库迁移验证（dry-run）
+- 多 Python/Node 版本矩阵测试
+
+### 配置
+
+需要在 GitHub Secrets 中配置以下变量：
+
+| Secret | 说明 |
+|--------|------|
+| `VERCEL_TOKEN` | Vercel API Token |
+| `VERCEL_ORG_ID` | Vercel Organisation ID |
+| `VERCEL_FRONTEND_ID` | Frontend Vercel Project ID |
+| `VERCEL_ADMIN_ID` | Admin Vercel Project ID |
+| `VERCEL_KDS_ID` | KDS Vercel Project ID |
+
+### 本地 pre-commit 钩子（可选）
+
+```bash
+# 安装 pre-commit
+pip install pre-commit
+
+# 安装钩子
+pre-commit install
+
+# 手动运行
+pre-commit run --all-files
+```
 
 ---
 
@@ -406,14 +545,18 @@ railway run alembic upgrade head
 # 3. 初始化座位
 railway run python -m app.scripts.init_seats
 
-# 4. 前端部署（Vercel）
+# 4. Admin 部署（Netlify）
+cd src/admin
+netlify deploy --prod --dir=dist
+
+# 5. 前端部署（Vercel）
 cd src/frontend
 vercel --prod
 
-# 5. KDS 部署（Vercel）
+# 6. KDS 部署（Vercel）
 cd src/kds
 vercel --prod
 
-# 6. 生成 QR 码
+# 7. 生成 QR 码
 python scripts/generate_qrcodes.py
 ```

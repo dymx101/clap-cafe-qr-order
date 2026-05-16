@@ -3,6 +3,7 @@
 import uuid
 from datetime import datetime
 
+from app.core.audit_service import log_admin_action
 from app.core.auth_service import get_current_admin
 from app.database import get_db
 from app.models import Category
@@ -43,7 +44,7 @@ async def list_categories(
 async def create_category(
     data: CategoryCreateRequest,
     db: AsyncSession = Depends(get_db),
-    _admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(get_current_admin),
 ):
     """Create a new menu category."""
     cat = Category(
@@ -55,6 +56,16 @@ async def create_category(
     db.add(cat)
     await db.commit()
     await db.refresh(cat)
+
+    await log_admin_action(
+        db,
+        admin.id,
+        "create",
+        "category",
+        str(cat.id),
+        new_value={"name_en": cat.name_en, "name_zh": cat.name_zh},
+    )
+
     return _to_response(cat)
 
 
@@ -63,7 +74,7 @@ async def update_category(
     category_id: str,
     data: CategoryUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    _admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(get_current_admin),
 ):
     """Update an existing category."""
     try:
@@ -76,13 +87,26 @@ async def update_category(
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
 
+    old_values = {}
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
+        old_values[field] = getattr(cat, field)
         setattr(cat, field, value)
     cat.updated_at = datetime.utcnow()
 
     await db.commit()
     await db.refresh(cat)
+
+    await log_admin_action(
+        db,
+        admin.id,
+        "update",
+        "category",
+        str(cat.id),
+        old_value=old_values,
+        new_value=update_data,
+    )
+
     return _to_response(cat)
 
 
@@ -90,7 +114,7 @@ async def update_category(
 async def delete_category(
     category_id: str,
     db: AsyncSession = Depends(get_db),
-    _admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(get_current_admin),
 ):
     """Soft-delete a category by setting is_active=False."""
     try:
@@ -106,3 +130,7 @@ async def delete_category(
     cat.is_active = False
     cat.updated_at = datetime.utcnow()
     await db.commit()
+
+    await log_admin_action(
+        db, admin.id, "delete", "category", str(cat.id), old_value={"is_active": True}
+    )

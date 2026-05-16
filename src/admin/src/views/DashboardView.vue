@@ -34,6 +34,13 @@
           <div class="stat-label">Unavailable Items</div>
         </div>
       </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: var(--color-warning-soft); color: var(--color-warning);">⚠️</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.lowStock }}</div>
+          <div class="stat-label">Low Stock Items</div>
+        </div>
+      </div>
     </div>
 
     <div class="quick-links card">
@@ -51,6 +58,17 @@
         </router-link>
       </div>
     </div>
+
+    <div v-if="recentLogs.length > 0" class="card" style="margin-top: var(--space-6);">
+      <h2 class="section-title">Recent Admin Actions</h2>
+      <div class="log-list">
+        <div v-for="log in recentLogs" :key="log.id" class="log-item">
+          <span class="log-action-badge" :class="log.action">{{ log.action }}</span>
+          <span class="log-target">{{ log.target_type }} {{ log.target_id.substring(0, 8) }}</span>
+          <span class="log-time">{{ formatLogTime(log.created_at) }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -58,12 +76,19 @@
 import { ref, computed, onMounted } from 'vue'
 import client from '@/api/client'
 
+interface AuditLog {
+  id: string; action: string; target_type: string; target_id: string
+  admin_email: string; created_at: string
+}
+
 const stats = ref({
   categories: 0,
   items: 0,
   seats: 0,
-  unavailable: 0
+  unavailable: 0,
+  lowStock: 0
 })
+const recentLogs = ref<AuditLog[]>([])
 
 const formattedDate = computed(() =>
   new Date().toLocaleDateString('en-SG', {
@@ -78,14 +103,32 @@ onMounted(async () => {
       client.get('/admin/items/'),
       client.get('/admin/seats/')
     ])
+    console.log('[Dashboard] categories:', catRes.data.length, 'items:', itemRes.data.length, 'seats:', seatRes.data.length)
     stats.value.categories = catRes.data.length
     stats.value.items = itemRes.data.length
     stats.value.seats = seatRes.data.filter((s: any) => s.is_active).length
     stats.value.unavailable = itemRes.data.filter((i: any) => !i.is_available).length
-  } catch {
-    // stats remain at 0
+    stats.value.lowStock = itemRes.data.filter((i: any) => i.is_low_stock).length
+    try {
+      const logRes = await client.get('/admin/audit/', { params: { limit: 5 } })
+      recentLogs.value = logRes.data.logs
+    } catch { /* ignore */ }
+  } catch (err: any) {
+    console.error('[Dashboard] Fetch error:', err.response?.data || err.message)
   }
 })
+
+function formatLogTime(isoString: string) {
+  const d = new Date(isoString)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24) return `${diffH}h ago`
+  return d.toLocaleDateString('en-SG', { month: 'short', day: 'numeric' })
+}
 </script>
 
 <style scoped>
@@ -187,4 +230,35 @@ onMounted(async () => {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.log-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.log-item:last-child { border-bottom: none; }
+
+.log-action-badge {
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.log-action-badge.create { background: var(--color-success-soft); color: var(--color-success); }
+.log-action-badge.update { background: var(--color-primary-soft); color: var(--color-primary); }
+.log-action-badge.delete { background: var(--color-danger-soft); color: var(--color-danger); }
+
+.log-target { flex: 1; color: var(--color-text-muted); }
+.log-time { color: var(--color-text-muted); font-size: var(--font-size-xs); }
 </style>

@@ -21,6 +21,10 @@ class AdminUser(Base):
         String(20), nullable=False, default="manager"
     )  # "manager" or "staff"
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    password_reset_token: Mapped[str] = mapped_column(String(255), nullable=True)
+    password_reset_expires: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )

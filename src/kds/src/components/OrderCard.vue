@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { KDSOrder } from '@/types/kds'
 import { useOrderUtils } from '@/composables/useOrderUtils'
 
@@ -14,28 +15,39 @@ const emit = defineEmits<{
   reject: [orderId: string, reason: string]
 }>()
 
-const { formatTime, formatWaitTime, formatOptions } = useOrderUtils()
+const { t } = useI18n()
+const { formatTime, formatOptions } = useOrderUtils()
 
-const waitInfo = ref({ minutes: 0, isWarning: false })
+const WARNING_MINUTES = 5
+const URGENT_MINUTES = 10
+
+const waitMinutes = ref(0)
 let waitTimer: ReturnType<typeof setInterval> | null = null
 
 function updateWaitTime() {
-  waitInfo.value = formatWaitTime(props.order.created_at)
+  const now = Date.now()
+  const orderTime = new Date(props.order.created_at).getTime()
+  waitMinutes.value = Math.floor((now - orderTime) / 60000)
 }
 
 onMounted(() => {
   updateWaitTime()
-  waitTimer = setInterval(updateWaitTime, 30000) // Update every 30 seconds
+  waitTimer = setInterval(updateWaitTime, 30000)
 })
 
 onUnmounted(() => {
   if (waitTimer) clearInterval(waitTimer)
 })
 
+const waitLevel = computed((): 'normal' | 'warning' | 'urgent' => {
+  if (waitMinutes.value >= URGENT_MINUTES) return 'urgent'
+  if (waitMinutes.value >= WARNING_MINUTES) return 'warning'
+  return 'normal'
+})
+
 const statusClass = computed(() => props.order.status)
 
 const seatDisplay = computed(() => {
-  // Extract seat number from seat_id like "T01" -> "01"
   const id = props.order.seat_id
   return id.replace(/^[A-Z]+/, '')
 })
@@ -45,26 +57,10 @@ const seatPrefix = computed(() => {
   const prefix = id.match(/^[A-Z]+/)
   return prefix ? prefix[0] : ''
 })
-
-function handleAccept() {
-  emit('accept', props.order.id)
-}
-
-function handleStart() {
-  emit('start', props.order.id)
-}
-
-function handleComplete() {
-  emit('complete', props.order.id)
-}
-
-function handleReject() {
-  emit('reject', props.order.id, 'customer_request')
-}
 </script>
 
 <template>
-  <div :class="['order-card', statusClass, { warning: waitInfo.isWarning }]">
+  <div :class="['order-card', statusClass, `wait-${waitLevel}`]">
     <div class="card-header">
       <div class="seat-info">
         <span class="seat-prefix">{{ seatPrefix }}</span>
@@ -72,9 +68,10 @@ function handleReject() {
       </div>
       <div class="order-meta">
         <span class="order-id">#{{ order.id.split('-').pop() }}</span>
-        <span class="wait-time" :class="{ warning: waitInfo.isWarning }">
+        <span class="wait-time">
           {{ formatTime(order.created_at) }}
-          <span v-if="waitInfo.isWarning" class="warning-badge">久</span>
+          <span v-if="waitLevel === 'warning'" class="wait-badge warn">{{ waitMinutes }}m</span>
+          <span v-if="waitLevel === 'urgent'" class="wait-badge urgent">{{ waitMinutes }}m</span>
         </span>
       </div>
     </div>
@@ -100,32 +97,32 @@ function handleReject() {
       <button
         v-if="order.status === 'submitted'"
         class="btn btn-accept"
-        @click="handleAccept"
+        @click="emit('accept', order.id)"
       >
-        接单
+        {{ t('kds.action.accept') }}
       </button>
 
       <button
         v-if="order.status === 'confirmed'"
         class="btn btn-start"
-        @click="handleStart"
+        @click="emit('start', order.id)"
       >
-        开始制作
+        {{ t('kds.action.start') }}
       </button>
 
       <button
         v-if="order.status === 'preparing'"
         class="btn btn-complete"
-        @click="handleComplete"
+        @click="emit('complete', order.id)"
       >
-        完成
+        {{ t('kds.action.complete') }}
       </button>
 
       <button
         class="btn btn-reject"
-        @click="handleReject"
+        @click="emit('reject', order.id, 'customer_request')"
       >
-        拒单
+        {{ t('kds.action.reject') }}
       </button>
     </div>
   </div>
@@ -140,7 +137,7 @@ function handleReject() {
   flex-direction: column;
   gap: 12px;
   border: 2px solid transparent;
-  transition: border-color 0.2s, transform 0.2s;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 
 .order-card.submitted {
@@ -159,11 +156,16 @@ function handleReject() {
   border-color: #10b981;
 }
 
-.order-card.warning {
-  animation: pulse-warning 1s ease-in-out infinite;
+.order-card.wait-warning {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.4);
 }
 
-@keyframes pulse-warning {
+.order-card.wait-urgent {
+  animation: pulse-urgent 1s ease-in-out infinite;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes pulse-urgent {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
   50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
 }
@@ -214,17 +216,21 @@ function handleReject() {
   gap: 4px;
 }
 
-.wait-time.warning {
-  color: #ef4444;
+.wait-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
-.warning-badge {
+.wait-badge.warn {
+  background: #f59e0b;
+  color: white;
+}
+
+.wait-badge.urgent {
   background: #ef4444;
   color: white;
-  font-size: 10px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-weight: 700;
 }
 
 .items-list {

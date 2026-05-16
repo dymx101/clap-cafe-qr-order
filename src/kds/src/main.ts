@@ -5,9 +5,16 @@ import App from './App.vue'
 import zh from './locales/zh.json'
 import en from './locales/en.json'
 
+function getInitialLocale(): string {
+  const params = new URLSearchParams(window.location.search)
+  const lang = params.get('lang')
+  if (lang === 'en' || lang === 'zh') return lang
+  return 'zh'
+}
+
 const i18n = createI18n({
   legacy: false,
-  locale: 'zh',
+  locale: getInitialLocale(),
   fallbackLocale: 'zh',
   messages: { zh, en }
 })

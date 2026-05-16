@@ -1,7 +1,7 @@
 # Clap Cafe 点餐系统产品文档
 # Clap Cafe QR Ordering System — Product Document
 
-> **Version 1.0 | 2026-05-14**
+> **Version 1.1 | 2026-05-16**
 > 中文版本在后，English version starts after Chinese content.
 
 ---
@@ -133,6 +133,26 @@ Open → Check QR codes → KDS lights up → Receive order → Prepare → Mark
 **Stripe（信用卡/钱包）**：创建 PaymentIntent → 前端 Stripe.js 加密提交 → Webhook 回调自动确认订单
 
 **PayNow**：创建 PaymentIntent → 生成 Reference → 顾客打开银行 App 扫码 → 15 分钟内手动确认或等待 Webhook 超时
+
+---
+
+## 5.3 账单功能 / Split Bill
+
+| 功能 | 说明 |
+|---|---|
+| 按人数拆分 | 同桌顾客可选择均分账单 |
+| 按商品拆分 | 每个商品归属特定顾客，单独结算 |
+| 合并支付 | 各方支付完成后，订单统一确认 |
+
+> Note: Split bill is useful for cafe environments where groups share a table. If not prioritized for v1, customers at the same table can place separate orders linked to the same seat.
+
+---
+
+## 5.4 GST 发票 / Receipts & Invoices
+
+- 系统自动在订单总额上叠加 9% GST
+- 顾客可在订单确认页查看含税明细
+- 管理员可导出月度 GST 报告（未来功能）
 
 ---
 
@@ -429,36 +449,60 @@ EN:   Scan to order | Seat {seat}
 
 | 组件 | 状态 | URL |
 |---|---|---|
-| 后端 Backend | ✅ 已部署 | `https://clap-cafe-qr-order.onrender.com` |
-| 数据库 PostgreSQL | ✅ 已创建 | Render 内置 |
-| Redis | ✅ 已创建 | `cool-teal-123918.upstash.io` |
-| GitHub Repo | ✅ 已创建 | `github.com/dymx101/clap-cafe-qr-order` |
-| 前端 H5 | 🔲 待部署 | Vercel |
-| KDS | 🔲 待部署 | Vercel |
-| Cloudflare DNS | 🔲 待配置 | |
-| Stripe Webhook | 🔲 待配置 | |
+| 后端 Backend | ✅ 已部署 | Railway |
+| 数据库 PostgreSQL | ✅ 已部署 | Railway |
+| Redis | ✅ 已部署 | Upstash |
+| GitHub Repo | ✅ 已部署 | `github.com/dymx101/clap-cafe-qr-order` |
+| 前端 H5 | ✅ 已部署 | Vercel (order.clapcafe.sg) |
+| KDS | ✅ 已部署 | Vercel (kds.clapcafe.sg) |
+| Admin Panel | ✅ 已部署 | Vercel (admin.clapcafe.sg) |
+| Cloudflare DNS | ✅ 已配置 | |
+| Stripe Webhook | ✅ 已配置 | |
 
 ---
 
 ## 15. 已知限制 / Known Limitations
 
 - PayNow 支付需要顾客手动打开银行 App 扫码，确认时间不确定；建议优先推广 Stripe 支付
-- Render Free Tier 休眠：若 15 分钟无请求后端会休眠，冷启动约 30 秒
-- KDS SSE 在后端休眠后需重新连接
+- 后端冷启动（如 Railway 休眠后）约 30 秒，KDS SSE 会自动重连
 - 座位状态管理目前为手动更新（未来可结合离座检测自动释放）
+- 管理员不支持查看/编辑已创建订单（admin/orders.py 未实现）
+- 无顾客端历史订单分页加载
 
 ---
 
 ## 16. 未来规划 / Roadmap
 
+### v2 优先级功能 / v2 Priority Features
+
 - [ ] 微信/支付宝集成（中国游客）
-- [ ] 离线支持（PWA + 本地缓存菜单）
 - [ ] 积分/会员系统
 - [ ] 每日推荐菜品
-- [ ] 后厨叫号广播
-- [ ] 销售数据看板
+- [ ] 销售数据看板（Admin Analytics）
 - [ ] 座位预约功能
 - [ ] Stripe ACH / Singapore PayNow 深度集成
+- [ ] 离线支持（PWA + 本地缓存菜单）
+- [ ] 后厨叫号广播
+- [ ] 订单小票打印（厨房打印机）
+- [ ] 退单/退款审批流程
+
+### v1.5 运营增强 / Operational Enhancements
+
+- [ ] 管理员查看所有订单（admin/orders.py）
+- [ ] KDS 屏幕支持多语言（英/中切换，供外籍员工使用）
+- [ ] 商品库存预警（低于阈值提醒）
+- [ ] 订单超时分级提醒（5min黄灯/10min红灯/KDS 声音升级）
+- [ ] 顾客点餐历史（跨座位识别）
+- [ ] 批量商品上下架
+- [ ] Admin 操作日志（谁在什么时间改了菜单）
+
+### 长期规划 / Long Term
+
+- [ ] 订阅制咖啡会员
+- [ ] 促销/优惠券系统
+- [ ] 厨师排班与 KDS 交接班
+- [ ] 多门店支持
+- [ ] WhatsApp 订单通知
 
 ---
 
@@ -474,5 +518,5 @@ QR 码文件路径: `src/frontend/public/qr-codes/`
 
 ---
 
-*文档版本: v1.0 | 最后更新: 2026-05-14*
-*Document version: v1.0 | Last updated: 2026-05-14*
+*文档版本: v1.1 | 最后更新: 2026-05-16*
+*Document version: v1.1 | Last updated: 2026-05-16*

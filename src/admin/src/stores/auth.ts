@@ -22,13 +22,23 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(email: string, password: string) {
     loading.value = true
     error.value = ''
+    console.log('[Auth] Login attempt for:', email)
     try {
       const res = await client.post('/admin/login', { email, password })
+      console.log('[Auth] Login success, token received')
       token.value = res.data.access_token
       admin.value = res.data.admin
       localStorage.setItem('admin_token', token.value)
+      localStorage.setItem('admin_email', email)
     } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Login failed'
+      console.error('[Auth] Login error:', {
+        url: err.config?.url,
+        status: err.response?.status,
+        data: err.response?.data,
+        headers: err.response?.headers,
+      })
+      const detail = err.response?.data?.detail || err.message || 'Login failed'
+      error.value = detail
       throw err
     } finally {
       loading.value = false
@@ -45,11 +55,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function changePassword(currentPassword: string, newPassword: string) {
+    loading.value = true
+    error.value = ''
+    try {
+      await client.post('/admin/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword
+      })
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || err.message || 'Password change failed'
+      error.value = detail
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function logout() {
     token.value = ''
     admin.value = null
     localStorage.removeItem('admin_token')
   }
 
-  return { token, admin, loading, error, isAuthenticated, login, fetchMe, logout }
+  return { token, admin, loading, error, isAuthenticated, login, fetchMe, logout, changePassword }
 })

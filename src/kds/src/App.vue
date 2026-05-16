@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useKDSStore } from '@/stores/kds'
 import { useAudioAlert } from '@/composables/useAudioAlert'
 import OrderList from '@/components/OrderList.vue'
@@ -8,6 +9,7 @@ import ConnectionStatus from '@/components/ConnectionStatus.vue'
 import AudioToggle from '@/components/AudioToggle.vue'
 import RejectModal from '@/components/RejectModal.vue'
 
+const { t } = useI18n()
 const store = useKDSStore()
 const { playAlert } = useAudioAlert()
 const audioToggleRef = ref<InstanceType<typeof AudioToggle> | null>(null)
@@ -71,12 +73,12 @@ async function handleRejectConfirm(reason: string) {
   <div class="kds-app">
     <header class="app-header">
       <div class="header-left">
-        <h1 class="app-title">KDS 后厨端</h1>
+        <h1 class="app-title">{{ t('kds.title') }}</h1>
         <ConnectionStatus :status="store.sseStatus" />
       </div>
       <div class="header-right">
         <div class="stats">
-          <span class="stats-label">今日完成</span>
+          <span class="stats-label">{{ t('kds.stats.title') }}</span>
           <span class="stats-value">{{ store.todayCompletedCount }}</span>
         </div>
         <AudioToggle

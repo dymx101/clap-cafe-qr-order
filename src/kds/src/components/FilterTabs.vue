@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 const props = defineProps<{
   modelValue: string
   counts: Record<string, number>
@@ -9,11 +13,11 @@ const emit = defineEmits<{
 }>()
 
 const tabs = [
-  { key: 'all', label: '全部' },
-  { key: 'submitted', label: '待接单' },
-  { key: 'confirmed', label: '已接单' },
-  { key: 'preparing', label: '制作中' },
-  { key: 'ready', label: '待取餐' }
+  { key: 'all', labelKey: 'kds.filter.all' },
+  { key: 'submitted', labelKey: 'kds.filter.submitted' },
+  { key: 'confirmed', labelKey: 'kds.filter.confirmed' },
+  { key: 'preparing', labelKey: 'kds.filter.preparing' },
+  { key: 'ready', labelKey: 'kds.filter.ready' }
 ]
 
 function selectTab(key: string) {
@@ -29,7 +33,7 @@ function selectTab(key: string) {
       :class="['tab', { active: modelValue === tab.key }]"
       @click="selectTab(tab.key)"
     >
-      <span class="tab-label">{{ tab.label }}</span>
+      <span class="tab-label">{{ t(tab.labelKey) }}</span>
       <span
         v-if="counts[tab.key] !== undefined && counts[tab.key] > 0"
         class="tab-count"

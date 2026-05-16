@@ -2,6 +2,7 @@
 """Admin CRUD endpoints for seats."""
 from datetime import datetime
 
+from app.core.audit_service import log_admin_action
 from app.core.auth_service import get_current_admin
 from app.database import get_db
 from app.models import Seat
@@ -40,10 +41,9 @@ async def list_seats(
 async def create_seat(
     data: SeatCreateRequest,
     db: AsyncSession = Depends(get_db),
-    _admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(get_current_admin),
 ):
     """Create a new seat."""
-    # Check if seat ID already exists
     existing = await db.execute(select(Seat).where(Seat.id == data.id))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail=f"Seat '{data.id}' already exists")
@@ -59,6 +59,16 @@ async def create_seat(
     db.add(seat)
     await db.commit()
     await db.refresh(seat)
+
+    await log_admin_action(
+        db,
+        admin.id,
+        "create",
+        "seat",
+        str(seat.id),
+        new_value={"label_en": seat.label_en, "zone": seat.zone},
+    )
+
     return _to_response(seat)
 
 
@@ -67,7 +77,7 @@ async def update_seat(
     seat_id: str,
     data: SeatUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    _admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(get_current_admin),
 ):
     """Update an existing seat."""
     result = await db.execute(select(Seat).where(Seat.id == seat_id))
@@ -77,7 +87,6 @@ async def update_seat(
 
     update_data = data.model_dump(exclude_unset=True)
 
-    # Validate status if provided
     if "status" in update_data:
         valid = {"vacant", "occupied", "reserved", "inactive"}
         if update_data["status"] not in valid:
@@ -86,12 +95,25 @@ async def update_seat(
                 detail=f"Invalid status. Must be one of {valid}",
             )
 
+    old_values = {}
     for field, value in update_data.items():
+        old_values[field] = getattr(seat, field)
         setattr(seat, field, value)
     seat.updated_at = datetime.utcnow()
 
     await db.commit()
     await db.refresh(seat)
+
+    await log_admin_action(
+        db,
+        admin.id,
+        "update",
+        "seat",
+        str(seat.id),
+        old_value=old_values,
+        new_value=update_data,
+    )
+
     return _to_response(seat)
 
 
@@ -99,7 +121,7 @@ async def update_seat(
 async def delete_seat(
     seat_id: str,
     db: AsyncSession = Depends(get_db),
-    _admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(get_current_admin),
 ):
     """Soft-delete a seat by setting is_active=False."""
     result = await db.execute(select(Seat).where(Seat.id == seat_id))
@@ -110,3 +132,7 @@ async def delete_seat(
     seat.is_active = False
     seat.updated_at = datetime.utcnow()
     await db.commit()
+
+    await log_admin_action(
+        db, admin.id, "delete", "seat", str(seat_id), old_value={"is_active": True}
+    )

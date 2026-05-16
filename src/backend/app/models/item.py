@@ -28,6 +28,7 @@ class Item(Base):
     options_config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     stock: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    low_stock_threshold: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -12,6 +12,12 @@ const router = createRouter({
       meta: { public: true }
     },
     {
+      path: '/reset-password',
+      name: 'ResetPassword',
+      component: () => import('@/views/ResetPasswordView.vue'),
+      meta: { public: true }
+    },
+    {
       path: '/',
       component: () => import('@/views/AdminLayout.vue'),
       children: [
@@ -29,6 +35,16 @@ const router = createRouter({
           path: 'seats',
           name: 'SeatManager',
           component: () => import('@/views/SeatManagerView.vue')
+        },
+        {
+          path: 'orders',
+          name: 'OrderManager',
+          component: () => import('@/views/OrdersView.vue')
+        },
+        {
+          path: 'settings',
+          name: 'Settings',
+          component: () => import('@/views/SettingsView.vue')
         }
       ]
     }

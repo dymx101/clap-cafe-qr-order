@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # API Key (KDS internal auth)
     KDS_API_KEY: str = "change-me-in-production"
 
+    # Resend (email)
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "Clap Cafe <onboarding@resend.dev>"
+
     # Admin JWT
     ADMIN_JWT_SECRET: str = "change-me-in-production-jwt-secret"
 

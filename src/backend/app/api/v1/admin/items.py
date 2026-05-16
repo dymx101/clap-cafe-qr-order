@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
+from app.core.audit_service import log_admin_action
 from app.core.auth_service import get_current_admin
 from app.database import get_db
 from app.models import Category, Item
@@ -17,6 +18,7 @@ router = APIRouter()
 
 
 def _to_response(item: Item) -> ItemAdminResponse:
+    is_low = item.stock is not None and item.stock <= item.low_stock_threshold
     return ItemAdminResponse(
         id=str(item.id),
         category_id=str(item.category_id),
@@ -29,6 +31,8 @@ def _to_response(item: Item) -> ItemAdminResponse:
         options_config=item.options_config or {},
         is_available=item.is_available,
         stock=item.stock,
+        low_stock_threshold=item.low_stock_threshold,
+        is_low_stock=is_low,
         sort_order=item.sort_order,
         is_active=item.is_active,
     )
@@ -56,10 +60,9 @@ async def list_items(
 async def create_item(
     data: ItemCreateRequest,
     db: AsyncSession = Depends(get_db),
-    _admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(get_current_admin),
 ):
     """Create a new menu item."""
-    # Validate category exists
     try:
         cat_uid = uuid.UUID(data.category_id)
     except ValueError:
@@ -80,12 +83,23 @@ async def create_item(
         options_config=data.options_config,
         is_available=data.is_available,
         stock=data.stock,
+        low_stock_threshold=data.low_stock_threshold,
         sort_order=data.sort_order,
         is_active=data.is_active,
     )
     db.add(item)
     await db.commit()
     await db.refresh(item)
+
+    await log_admin_action(
+        db,
+        admin.id,
+        "create",
+        "item",
+        str(item.id),
+        new_value={"name_en": item.name_en, "name_zh": item.name_zh},
+    )
+
     return _to_response(item)
 
 
@@ -94,7 +108,7 @@ async def update_item(
     item_id: str,
     data: ItemUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    _admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(get_current_admin),
 ):
     """Update an existing menu item."""
     try:
@@ -108,8 +122,8 @@ async def update_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     update_data = data.model_dump(exclude_unset=True)
+    old_values = {}
 
-    # Validate category if being changed
     if "category_id" in update_data:
         try:
             cat_uid = uuid.UUID(update_data["category_id"])
@@ -120,16 +134,27 @@ async def update_item(
         if not cat_result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Category not found")
 
-    # Convert price to Decimal
     if "price_sgd" in update_data:
         update_data["price_sgd"] = Decimal(str(update_data["price_sgd"]))
 
     for field, value in update_data.items():
+        old_values[field] = getattr(item, field)
         setattr(item, field, value)
     item.updated_at = datetime.utcnow()
 
     await db.commit()
     await db.refresh(item)
+
+    await log_admin_action(
+        db,
+        admin.id,
+        "update",
+        "item",
+        str(item.id),
+        old_value=old_values,
+        new_value=update_data,
+    )
+
     return _to_response(item)
 
 
@@ -137,7 +162,7 @@ async def update_item(
 async def delete_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
-    _admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(get_current_admin),
 ):
     """Soft-delete an item by setting is_active=False."""
     try:
@@ -153,3 +178,7 @@ async def delete_item(
     item.is_active = False
     item.updated_at = datetime.utcnow()
     await db.commit()
+
+    await log_admin_action(
+        db, admin.id, "delete", "item", str(item.id), old_value={"is_active": True}
+    )

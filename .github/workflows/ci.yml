@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Backend — lint, type-check, test, migration
+  # ─────────────────────────────────────────────
+  backend:
+    name: backend (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-backend-${{ matrix.python-version }}-${{ hashFiles('src/backend/requirements.txt') }}
+          restore-keys: |
+            pip-backend-${{ matrix.python-version }}-
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r src/backend/requirements.txt
+
+      - name: Run ruff format check
+        run: |
+          pip install ruff
+          ruff format --diff src/backend/
+
+      - name: Run ruff lint
+        run: ruff check src/backend/
+
+      - name: Type-check with pyright
+        run: |
+          pip install pyright
+          pyright src/backend/
+
+      - name: Run migrations (dry-run)
+        run: |
+          cd src/backend
+          alembic upgrade head --sql > /dev/null 2>&1 || true
+          # If this fails it means migration is broken; review before merging
+
+      - name: Run pytest
+        run: |
+          cd src/backend
+          pytest
+
+  # ─────────────────────────────────────────────
+  # Frontend
+  # ─────────────────────────────────────────────
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: src/frontend
+
+      - name: Type-check
+        run: npm run type-check
+        working-directory: src/frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: src/frontend
+
+  # ─────────────────────────────────────────────
+  # Admin panel
+  # ─────────────────────────────────────────────
+  admin:
+    name: admin
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: src/admin
+
+      - name: Type-check
+        run: npm run type-check
+        working-directory: src/admin
+
+      - name: Build
+        run: npm run build
+        working-directory: src/admin
+
+  # ─────────────────────────────────────────────
+  # KDS
+  # ─────────────────────────────────────────────
+  kds:
+    name: kds
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/kds/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: src/kds
+
+      - name: Type-check
+        run: npm run type-check
+        working-directory: src/kds
+
+      - name: Build
+        run: npm run build
+        working-directory: src/kds

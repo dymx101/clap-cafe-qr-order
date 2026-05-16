@@ -22,6 +22,14 @@
           <span class="nav-icon">💺</span>
           Seat Manager
         </router-link>
+        <router-link to="/orders" class="nav-item" :class="{ active: $route.path === '/orders' }">
+          <span class="nav-icon">📋</span>
+          Order Manager
+        </router-link>
+        <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
+          <span class="nav-icon">⚙️</span>
+          Settings
+        </router-link>
       </nav>
 
       <div class="sidebar-footer">

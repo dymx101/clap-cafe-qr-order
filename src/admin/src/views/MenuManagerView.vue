@@ -33,12 +33,23 @@
       </button>
     </div>
 
+    <!-- Bulk Actions Bar -->
+    <div v-if="selectedItems.length > 0" class="bulk-actions">
+      <span class="bulk-count">{{ selectedItems.length }} selected</span>
+      <button class="btn btn-sm" :disabled="bulkLoading" @click="bulkSetAvailability(true)">Mark Available</button>
+      <button class="btn btn-sm" :disabled="bulkLoading" @click="bulkSetAvailability(false)">Mark Sold Out</button>
+      <button class="btn btn-sm btn-text" @click="selectedItems = []">Clear</button>
+    </div>
+
     <!-- Items Table -->
     <div class="card" style="padding: 0; overflow: hidden;">
       <div v-if="loading" class="table-loading"><span class="spinner"></span></div>
       <table v-else class="data-table">
         <thead>
           <tr>
+            <th style="width: 40px;">
+              <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected" />
+            </th>
             <th>Item</th>
             <th>Price (SGD)</th>
             <th>Stock</th>
@@ -50,13 +61,24 @@
         <tbody>
           <tr v-for="item in filteredItems" :key="item.id">
             <td>
+              <input
+                type="checkbox"
+                :value="item.id"
+                v-model="selectedItems"
+                @change="handleSelectionChange"
+              />
+            </td>
+            <td>
               <div class="item-name">{{ item.name_en }}</div>
               <div class="item-name-zh">{{ item.name_zh }}</div>
             </td>
             <td>${{ item.price_sgd.toFixed(2) }}</td>
             <td>
-              <span v-if="item.stock !== null && item.stock !== undefined">{{ item.stock }}</span>
-              <span v-else class="text-muted">∞</span>
+              <div class="stock-cell">
+                <span v-if="item.stock !== null && item.stock !== undefined">{{ item.stock }}</span>
+                <span v-else class="text-muted">∞</span>
+                <span v-if="item.is_low_stock" class="stock-warning" title="Low stock">⚠️</span>
+              </div>
             </td>
             <td>
               <span class="badge" :class="item.is_available ? 'badge-success' : 'badge-danger'">
@@ -78,7 +100,7 @@
             </td>
           </tr>
           <tr v-if="filteredItems.length === 0">
-            <td colspan="6" class="empty-state">No items found.</td>
+            <td colspan="8" class="empty-state">No items found.</td>
           </tr>
         </tbody>
       </table>
@@ -129,6 +151,10 @@
             <div class="form-group">
               <label class="form-label">Stock (leave empty for unlimited)</label>
               <input v-model.number="itemForm.stock" type="number" min="0" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Low Stock Alert Threshold</label>
+              <input v-model.number="itemForm.low_stock_threshold" type="number" min="0" class="form-input" />
             </div>
           </div>
           <div class="form-row">
@@ -194,7 +220,8 @@ interface Item {
   id: string; category_id: string; name_zh: string; name_en: string
   description_zh: string | null; description_en: string | null
   price_sgd: number; image_url: string | null; options_config: any
-  is_available: boolean; stock: number | null; sort_order: number; is_active: boolean
+  is_available: boolean; stock: number | null; low_stock_threshold: number
+  is_low_stock: boolean; sort_order: number; is_active: boolean
 }
 
 const categories = ref<Category[]>([])
@@ -205,6 +232,37 @@ const selectedCategoryId = ref('')
 const showItemModal = ref(false)
 const showCategoryModal = ref(false)
 const editingItem = ref<Item | null>(null)
+const selectedItems = ref<string[]>([])
+const bulkLoading = ref(false)
+
+const isAllSelected = computed(() =>
+  filteredItems.value.length > 0 && selectedItems.value.length === filteredItems.value.length
+)
+
+function toggleSelectAll(e: Event) {
+  const checked = (e.target as HTMLInputElement).checked
+  selectedItems.value = checked ? filteredItems.value.map(i => i.id) : []
+}
+
+function handleSelectionChange() {
+  // no-op, selectedItems is already updated via v-model
+}
+
+async function bulkSetAvailability(available: boolean) {
+  if (!selectedItems.value.length) return
+  bulkLoading.value = true
+  try {
+    await Promise.all(
+      selectedItems.value.map(id =>
+        client.put(`/admin/items/${id}`, { is_available: available })
+      )
+    )
+    selectedItems.value = []
+    await fetchData()
+  } finally {
+    bulkLoading.value = false
+  }
+}
 
 const itemForm = reactive({
   category_id: '',
@@ -212,6 +270,7 @@ const itemForm = reactive({
   description_en: '', description_zh: '',
   price_sgd: 0, image_url: '',
   stock: null as number | null,
+  low_stock_threshold: 5,
   sort_order: 0,
   is_available: true, is_active: true
 })
@@ -228,12 +287,17 @@ const filteredItems = computed(() => {
 async function fetchData() {
   loading.value = true
   try {
+    console.log('[MenuManager] Fetching categories and items...')
     const [catRes, itemRes] = await Promise.all([
       client.get('/admin/categories/'),
       client.get('/admin/items/')
     ])
+    console.log('[MenuManager] Categories response:', catRes.data.length, catRes.data)
+    console.log('[MenuManager] Items response:', itemRes.data.length, itemRes.data)
     categories.value = catRes.data
     items.value = itemRes.data
+  } catch (err: any) {
+    console.error('[MenuManager] Fetch error:', err.response?.data || err.message)
   } finally {
     loading.value = false
   }
@@ -250,6 +314,7 @@ function openItemModal(item?: Item) {
       price_sgd: item.price_sgd,
       image_url: item.image_url || '',
       stock: item.stock,
+      low_stock_threshold: item.low_stock_threshold,
       sort_order: item.sort_order,
       is_available: item.is_available,
       is_active: item.is_active
@@ -261,7 +326,7 @@ function openItemModal(item?: Item) {
       name_en: '', name_zh: '',
       description_en: '', description_zh: '',
       price_sgd: 0, image_url: '',
-      stock: null, sort_order: 0,
+      stock: null, low_stock_threshold: 5, sort_order: 0,
       is_available: true, is_active: true
     })
   }
@@ -341,6 +406,23 @@ onMounted(fetchData)
 .row-actions { display: flex; gap: var(--space-1); }
 
 .text-muted { color: var(--color-text-muted); }
+.stock-cell { display: flex; align-items: center; gap: 6px; }
+.stock-warning { font-size: 1rem; }
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+.bulk-count { font-weight: 600; color: var(--color-primary); font-size: var(--font-size-sm); flex: 1; }
+.btn-sm { padding: var(--space-2) var(--space-3); font-size: var(--font-size-sm); }
+.btn-text { background: none; border: none; color: var(--color-text-muted); cursor: pointer; }
+.btn-text:hover { color: var(--color-text); }
 
 .table-loading {
   display: flex; justify-content: center; padding: var(--space-10);

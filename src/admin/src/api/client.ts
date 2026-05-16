@@ -1,8 +1,7 @@
-// src/api/client.ts
 import axios from 'axios'
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/v1',
+  baseURL: '/api',
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' }
 })
@@ -23,7 +22,7 @@ client.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('admin_token')
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+        window.location.replace('/login')
       }
     }
     return Promise.reject(err)

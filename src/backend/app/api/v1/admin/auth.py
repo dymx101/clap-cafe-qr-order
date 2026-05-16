@@ -168,7 +168,7 @@ async def admin_debug_reset_password(
 ):
     """Debug: reset password for clapcafe001@gmail.com. No token required."""
     result = await db.execute(
-        select(AdminUser).where(AdminUser.email == "clapcafe001@gmail.com")
+        select(AdminUser).where(AdminUser.email == "admin@clapcafe.sg")
     )
     admin = result.scalar_one_or_none()
     if not admin:

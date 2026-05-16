@@ -222,6 +222,8 @@ const notesChanged = computed(
 )
 
 onMounted(() => {
+  const storedToken = localStorage.getItem('admin_token')
+  console.log('[Orders] onMounted, stored token:', storedToken ? `Bearer ${storedToken.substring(0, 15)}...` : 'MISSING')
   loadOrders(1)
   loadTabCounts()
 })
@@ -242,6 +244,8 @@ async function loadOrders(p = 1) {
   p = Math.max(1, p)
   page.value = p
   loading.value = true
+  const token = localStorage.getItem('admin_token')
+  console.log('[Orders] loadOrders called, token in localStorage:', token ? `Bearer ${token.substring(0, 15)}...` : 'MISSING')
   try {
     const params: any = { page: p, limit: limit.value }
     if (filterStatus.value) params.status = filterStatus.value

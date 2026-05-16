@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
     console.log('[Auth] Login attempt for:', email)
     try {
       const res = await client.post('/admin/login', { email, password })
-      console.log('[Auth] Login success, token received')
+      console.log('[Auth] Login success, token received:', res.data.access_token ? `Bearer ${res.data.access_token.substring(0, 15)}...` : 'EMPTY')
       token.value = res.data.access_token
       admin.value = res.data.admin
       localStorage.setItem('admin_token', token.value)

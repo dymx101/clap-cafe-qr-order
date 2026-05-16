@@ -9,6 +9,7 @@ const client = axios.create({
 // Attach JWT token to every request
 client.interceptors.request.use(config => {
   const token = localStorage.getItem('admin_token')
+  console.log('[Client] Request:', config.method?.toUpperCase(), config.url, 'token:', token ? `Bearer ${token.substring(0, 15)}...` : 'MISSING')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

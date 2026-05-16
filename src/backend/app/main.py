@@ -18,9 +18,52 @@ from fastapi.middleware.cors import CORSMiddleware
 async def lifespan(app: FastAPI):
     # 启动时
     start_timeout_worker()
+    # Run raw SQL migration for missing columns (defense in depth)
+    await _run_startup_migration()
     yield
     # 关闭时
     stop_timeout_worker()
+
+
+async def _run_startup_migration():
+    """Add missing columns that may not exist from initial schema."""
+    try:
+        from sqlalchemy import text
+        from sqlalchemy.ext.asyncio import create_async_engine
+
+        db_url = settings.DATABASE_URL
+        engine = create_async_engine(db_url, echo=False)
+        async with engine.connect() as conn:
+            for stmt in [
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER NOT NULL DEFAULT 5",
+                "ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255)",
+                "ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ",
+            ]:
+                try:
+                    await conn.execute(text(stmt))
+                except Exception:
+                    pass
+            try:
+                await conn.execute(
+                    text(
+                        """CREATE TABLE IF NOT EXISTS admin_audit_logs (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    admin_user_id UUID NOT NULL REFERENCES admin_users(id),
+                    action VARCHAR(50) NOT NULL,
+                    target_type VARCHAR(50) NOT NULL,
+                    target_id VARCHAR(100) NOT NULL,
+                    old_value JSONB,
+                    new_value JSONB,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )"""
+                    )
+                )
+            except Exception:
+                pass
+            await conn.commit()
+        await engine.dispose()
+    except Exception:
+        pass  # Best-effort migration — don't block startup
 
 
 app = FastAPI(
